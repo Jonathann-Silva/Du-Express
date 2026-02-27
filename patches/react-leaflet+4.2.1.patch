@@ -1,0 +1,14 @@
+patch-package
+--- a/node_modules/react-leaflet/package.json
++++ b/node_modules/react-leaflet/package.json
+@@ -69,8 +69,8 @@
+   },
+   "peerDependencies": {
+     "leaflet": "^1.8.0",
+-    "react": "^18.0.0",
+-    "react-dom": "^18.0.0"
++    "react": "^18.0.0 || ^19.0.0",
++    "react-dom": "^18.0.0 || ^19.0.0"
+   },
+   "repository": {
+     "type": "git",

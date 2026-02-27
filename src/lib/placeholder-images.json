@@ -1,0 +1,70 @@
+{
+  "placeholderImages": [
+    {
+      "id": "admin-portrait",
+      "description": "Retrato do Admin",
+      "imageUrl": "https://images.unsplash.com/photo-1713974464727-03188ee72300?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cG9ydHJhaXQlMjBwcm9mZXNzaW9uYWx8ZW58MHx8fHwxNzcxNTgwMzAyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "retrato profissional"
+    },
+    {
+      "id": "client-portrait-burger",
+      "description": "Logo da Burger Joint Co.",
+      "imageUrl": "https://images.unsplash.com/photo-1640812570037-ea415861315b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxidXJnZXIlMjBsb2dvfGVufDB8fHx8MTc3MTYwMTkxNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "burger logo"
+    },
+    {
+      "id": "client-portrait-pharmacy",
+      "description": "Logo da Green Pharmacy",
+      "imageUrl": "https://images.unsplash.com/photo-1705988142466-e468bc654eeb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwaGFybWFjeSUyMGxvZ298ZW58MHx8fHwxNzcxNjAxOTE2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pharmacy logo"
+    },
+    {
+      "id": "client-home-profile",
+      "description": "Perfil do Cliente",
+      "imageUrl": "https://images.unsplash.com/photo-1633367583895-08545d733dfe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxtYW4lMjBzbWlsaW5nfGVufDB8fHx8MTc3MTU2MTI4MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "homem sorrindo"
+    },
+    {
+      "id": "courier-profile",
+      "description": "Perfil do Entregador",
+      "imageUrl": "https://images.unsplash.com/photo-1562124638-724e13052daf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtYW4lMjBoYXBweXxlbnwwfHx8fDE3NzE2MDE5MTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "homem feliz"
+    },
+    {
+      "id": "courier-profile-2",
+      "description": "Foto de perfil do entregador",
+      "imageUrl": "https://images.unsplash.com/photo-1758445043309-ce680c326a6c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cGVyc29uJTIwY291cmllcnxlbnwwfHx8fDE3NzE2MDE5MTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pessoa entregador"
+    },
+    {
+      "id": "map-image-1",
+      "description": "Vista do mapa de São Paulo",
+      "imageUrl": "https://images.unsplash.com/photo-1476385822777-70eabacbd41f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxjaXR5JTIwbWFwfGVufDB8fHx8MTc3MTU2MzM0Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mapa cidade"
+    },
+    {
+      "id": "map-image-2",
+      "description": "Vista do mapa para rota de entrega",
+      "imageUrl": "https://images.unsplash.com/photo-1712697235923-1a47740165f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxzdHJlZXQlMjBtYXB8ZW58MHx8fHwxNzcxNjAxOTE2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mapa rua"
+    },
+    {
+      "id": "map-image-3",
+      "description": "Mapa abstrato para tela de login",
+      "imageUrl": "https://images.unsplash.com/photo-1718498576117-b4bc72f30f56?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxhYnN0cmFjdCUyMG1hcHxlbnwwfHx8fDE3NzE2MDExODl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mapa abstrato"
+    },
+    {
+      "id": "courier-john-doe",
+      "description": "Retrato do entregador John Doe",
+      "imageUrl": "https://images.unsplash.com/photo-1599566150163-29194dcaad36?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwZXJzb258ZW58MHx8fHwxNzE2NDI0MjU4fDA&ixlib=rb-4.0.3&q=80&w=1080",
+      "imageHint": "retrato homem"
+    },
+    {
+      "id": "courier-marco-silva",
+      "description": "Retrato do entregador Marco Silva",
+      "imageUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwZXJzb258ZW58MHx8fHwxNzE2NDI0MjU4fDA&ixlib=rb-4.0.3&q=80&w=1080",
+      "imageHint": "retrato homem"
+    }
+  ]
+}
