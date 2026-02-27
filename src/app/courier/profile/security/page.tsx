@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, ShieldLock, KeyRound, LogOut } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, KeyRound, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,7 @@ export default function SecuritySettingsPage() {
       <main className="flex-1 overflow-y-auto pb-24">
         <div className="p-6 flex flex-col items-center text-center">
           <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mb-4">
-            <ShieldLock className="text-primary size-10" />
+            <ShieldCheck className="text-primary size-10" />
           </div>
           <h2 className="text-xl font-bold mb-1 font-headline">Proteção da Conta</h2>
           <p className="text-sm text-muted-foreground">
