@@ -27,9 +27,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         const statusDocRef = doc(firestore, 'status', 'main');
         
         const batch = writeBatch(firestore);
-        // Atualiza o status individual no perfil
         batch.set(userDocRef, { status: online ? 'online' : 'offline' }, { merge: true });
-        // Atualiza o status global da Central para Clientes e Entregadores
         batch.set(statusDocRef, { 
             adminOnline: online,
             lastUpdated: serverTimestamp(),
@@ -49,37 +47,29 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [firestore, auth]);
 
   useEffect(() => {
-    // Somente gerencia status se o usuário for carregado e for um admin
     if (user && userProfile?.role === 'admin') {
-      
-      // Se houver um agendamento de "offline" pendente (de uma navegação ou refresh), cancelamos
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
 
-      // Se ainda não marcamos como online nesta montagem, fazemos agora
       if (!statusUpdateRef.current) {
         setAdminStatus(true);
         statusUpdateRef.current = true;
+        // REGISTRA O APARELHO DO ADMIN
         requestPermissionAndSaveToken(user.uid);
       }
 
-      // LISTENER DE NOVOS PEDIDOS PARA ALERTAS NO BROWSER
       const q = query(collection(firestore, 'deliveries'), where('status', '==', 'pending'));
       const unsubscribeDeliveries = onSnapshot(q, (snapshot) => {
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'added') {
-            // Só dispara se o documento for "novo" (criado após o carregamento inicial)
-            // e se tivermos permissão
             if (Notification.permission === 'granted') {
               new Notification('📦 Novo Pedido!', {
                 body: 'Uma nova solicitação de entrega chegou na central.',
                 icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
                 vibrate: [200, 100, 200]
               });
-              
-              // Tenta tocar um som opcional (muitos browsers bloqueiam som sem interação prévia)
               const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
               audio.play().catch(() => {});
             }
@@ -87,7 +77,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         });
       });
 
-      // Tenta marcar como offline ao fechar a aba/janela (melhor esforço)
       const handleUnload = () => {
         setAdminStatus(false);
       };
@@ -96,8 +85,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       return () => {
         window.removeEventListener('beforeunload', handleUnload);
         unsubscribeDeliveries();
-        // Quando o layout desmonta (saiu da área admin ou deslogou)
-        // Agendamos o offline com uma pequena carência para não piscar no F5
         timeoutRef.current = setTimeout(() => {
           setAdminStatus(false);
           statusUpdateRef.current = false;

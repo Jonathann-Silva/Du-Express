@@ -4,30 +4,28 @@ import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import { getApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 
-// Chave VAPID configurada pelo usuário (confirmada e correta)
 const VAPID_KEY = 'BIiPXefnrJB_RH2iDZNKlvJXUTUFaHNWPkgdqv4WRYSMB7OvzX_GPf0WylTwE23_uYwcDsRAFpijfDi0tE4gEhg';
 
 export const requestPermissionAndSaveToken = async (userId: string) => {
   if (typeof window === 'undefined') return;
 
-  const supported = await isSupported();
-  if (!supported) {
-      console.log('Firebase Messaging não é suportado neste navegador.');
-      return;
-  }
-  
-  const app = getApp();
-  const firestore = getFirestore(app);
-  const messaging = getMessaging(app);
-
   try {
+    const supported = await isSupported();
+    if (!supported) return;
+    
+    const app = getApp();
+    const firestore = getFirestore(app);
+    const messaging = getMessaging(app);
+
     const permission = await Notification.requestPermission();
+    
     if (permission === 'granted') {
-      // Registra o Service Worker explicitamente
+      // Registra o Service Worker que permite receber mensagens com app fechado
       const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
         scope: '/'
       });
       
+      // Obtém o "Endereço" (Token) único deste aparelho
       const currentToken = await getToken(messaging, {
         serviceWorkerRegistration: registration,
         vapidKey: VAPID_KEY
@@ -38,13 +36,14 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
         const userDoc = await getDoc(userDocRef);
         const existingToken = userDoc.data()?.fcmToken;
 
+        // Salva o token no banco para que o sistema saiba qual aparelho notificar
         if (existingToken !== currentToken) {
           await setDoc(userDocRef, { fcmToken: currentToken }, { merge: true });
-          console.log('FCM token atualizado com sucesso.');
+          console.log('Identidade do aparelho registrada com sucesso.');
         }
       }
     }
   } catch (err) {
-    console.error('Erro ao gerenciar permissão de notificação:', err);
+    console.warn('FCM: Notificações não disponíveis ou negadas pelo usuário.');
   }
 };
