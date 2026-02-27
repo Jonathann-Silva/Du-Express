@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -5,7 +6,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { MobileLayout } from '@/components/MobileLayout';
 import { AdminNav } from '@/components/nav/AdminNav';
 import { useUser, useFirestore, useAuth } from '@/firebase';
-import { doc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, writeBatch, serverTimestamp, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { requestPermissionAndSaveToken } from '@/firebase/messaging';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -64,6 +65,28 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         requestPermissionAndSaveToken(user.uid);
       }
 
+      // LISTENER DE NOVOS PEDIDOS PARA ALERTAS NO BROWSER
+      const q = query(collection(firestore, 'deliveries'), where('status', '==', 'pending'));
+      const unsubscribeDeliveries = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            // Só dispara se o documento for "novo" (criado após o carregamento inicial)
+            // e se tivermos permissão
+            if (Notification.permission === 'granted') {
+              new Notification('📦 Novo Pedido!', {
+                body: 'Uma nova solicitação de entrega chegou na central.',
+                icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
+                vibrate: [200, 100, 200]
+              });
+              
+              // Tenta tocar um som opcional (muitos browsers bloqueiam som sem interação prévia)
+              const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+              audio.play().catch(() => {});
+            }
+          }
+        });
+      });
+
       // Tenta marcar como offline ao fechar a aba/janela (melhor esforço)
       const handleUnload = () => {
         setAdminStatus(false);
@@ -72,6 +95,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       return () => {
         window.removeEventListener('beforeunload', handleUnload);
+        unsubscribeDeliveries();
         // Quando o layout desmonta (saiu da área admin ou deslogou)
         // Agendamos o offline com uma pequena carência para não piscar no F5
         timeoutRef.current = setTimeout(() => {
@@ -80,7 +104,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         }, 5000);
       };
     }
-  }, [user?.uid, userProfile?.role, setAdminStatus]);
+  }, [user?.uid, userProfile?.role, setAdminStatus, firestore]);
 
   return (
     <MobileLayout>

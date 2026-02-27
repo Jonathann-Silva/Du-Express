@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ArrowLeft, User, Wallet, Map, ArrowRight, Loader2, CircleDot, Building, MapPin } from "lucide-react";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useUser, useFirestore } from "@/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
@@ -48,7 +49,7 @@ export default function RequestDeliveryPage() {
     }
   }, [rates, selectedPrice]);
 
-  const handleRequest = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleRequest = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user || !userProfile || !firestore) {
       toast({
@@ -108,31 +109,48 @@ export default function RequestDeliveryPage() {
       observations: observations,
     };
 
-    const deliveriesCollectionRef = collection(firestore, "deliveries");
+    try {
+      const deliveriesCollectionRef = collection(firestore, "deliveries");
+      await addDoc(deliveriesCollectionRef, newDelivery);
 
-    addDoc(deliveriesCollectionRef, newDelivery)
-      .then((docRef) => {
-        // Also create a notification for the client confirming the request
-        const notificationsCollectionRef = collection(firestore, 'notifications');
-        addDoc(notificationsCollectionRef, {
-          userId: user.uid,
-          title: 'Pedido Recebido!',
-          description: 'Sua solicitação de entrega foi recebida e está aguardando um entregador.',
+      // Notificação para o Próprio Cliente
+      const notificationsCollectionRef = collection(firestore, 'notifications');
+      await addDoc(notificationsCollectionRef, {
+        userId: user.uid,
+        title: 'Pedido Recebido!',
+        description: 'Sua solicitação de entrega foi recebida e está aguardando um entregador.',
+        createdAt: serverTimestamp(),
+        read: false,
+        icon: 'package',
+        link: '/client'
+      });
+
+      // BUSCAR ADMINS E NOTIFICAR
+      const adminsQuery = query(collection(firestore, 'users'), where('role', '==', 'admin'));
+      const adminsSnapshot = await getDocs(adminsQuery);
+      
+      const adminNotifPromises = adminsSnapshot.docs.map(adminDoc => {
+        return addDoc(notificationsCollectionRef, {
+          userId: adminDoc.id,
+          title: '📦 Novo Pedido!',
+          description: `${userProfile.displayName} solicitou uma entrega para ${dropoff_neighborhood}.`,
           createdAt: serverTimestamp(),
           read: false,
           icon: 'package',
-          link: '/client'
+          link: '/admin'
         });
+      });
 
-        toast({
-          title: "Pedido Enviado!",
-          description: `Seu pedido de entrega foi enviado com sucesso.`,
-        });
-        router.push("/client");
-      })
-      .catch((serverError) => {
+      await Promise.all(adminNotifPromises);
+
+      toast({
+        title: "Pedido Enviado!",
+        description: `Seu pedido de entrega foi enviado com sucesso.`,
+      });
+      router.push("/client");
+    } catch (serverError: any) {
         const permissionError = new FirestorePermissionError({
-            path: deliveriesCollectionRef.path,
+            path: 'deliveries',
             operation: 'create',
             requestResourceData: newDelivery,
         });
@@ -143,10 +161,9 @@ export default function RequestDeliveryPage() {
             title: "Falha ao enviar pedido",
             description: "Ocorreu um erro ao enviar seu pedido. Tente novamente.",
         });
-      })
-      .finally(() => {
-          setIsSubmitting(false);
-      });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   return (
