@@ -11,7 +11,10 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
 
   try {
     const supported = await isSupported();
-    if (!supported) return;
+    if (!supported) {
+      console.warn('FCM: Notificações não suportadas neste navegador.');
+      return;
+    }
     
     const app = getApp();
     const firestore = getFirestore(app);
@@ -20,12 +23,12 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
-      // Registra o Service Worker que permite receber mensagens com app fechado
+      // Registra o Service Worker explicitamente para garantir funcionamento em segundo plano
       const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
         scope: '/'
       });
       
-      // Obtém o "Endereço" (Token) único deste aparelho
+      // Obtém o Token único deste aparelho
       const currentToken = await getToken(messaging, {
         serviceWorkerRegistration: registration,
         vapidKey: VAPID_KEY
@@ -36,14 +39,18 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
         const userDoc = await getDoc(userDocRef);
         const existingToken = userDoc.data()?.fcmToken;
 
-        // Salva o token no banco para que o sistema saiba qual aparelho notificar
+        // Salva o token no banco para vincular este celular ao usuário (Admin ou Motoboy)
         if (existingToken !== currentToken) {
           await setDoc(userDocRef, { fcmToken: currentToken }, { merge: true });
-          console.log('Identidade do aparelho registrada com sucesso.');
+          console.log('FCM: Aparelho registrado para notificações push.');
         }
+      } else {
+        console.warn('FCM: Nenhum token de registro disponível. Verifique as permissões do navegador.');
       }
+    } else {
+      console.warn('FCM: Permissão de notificação negada pelo usuário.');
     }
   } catch (err) {
-    console.warn('FCM: Notificações não disponíveis ou negadas pelo usuário.');
+    console.error('FCM: Erro ao configurar notificações push:', err);
   }
 };
