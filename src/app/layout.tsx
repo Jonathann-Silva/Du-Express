@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -17,10 +17,13 @@ const spaceGrotesk = Space_Grotesk({
 
 const APP_ICON_URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s';
 
+export const viewport: Viewport = {
+  themeColor: '#13a4ec',
+};
+
 export const metadata: Metadata = {
   title: 'Lucas-Expresso',
   description: 'Seu app de gerenciamento de entregas.',
-  themeColor: '#13a4ec',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
