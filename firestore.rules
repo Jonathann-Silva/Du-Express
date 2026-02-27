@@ -28,7 +28,8 @@ service cloud.firestore {
     // USERS
     match /users/{userId} {
       allow get: if isAuth();
-      allow list: if isAdmin();
+      // Allow list for authenticated users so clients can find admins/couriers
+      allow list: if isAuth();
       allow write: if isOwner(userId) || isAdmin();
     }
 

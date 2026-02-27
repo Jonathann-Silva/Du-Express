@@ -109,61 +109,69 @@ export default function RequestDeliveryPage() {
       observations: observations,
     };
 
-    try {
-      const deliveriesCollectionRef = collection(firestore, "deliveries");
-      await addDoc(deliveriesCollectionRef, newDelivery);
+    const deliveriesCollectionRef = collection(firestore, "deliveries");
+    const notificationsCollectionRef = collection(firestore, 'notifications');
 
-      // Notificação para o Próprio Cliente
-      const notificationsCollectionRef = collection(firestore, 'notifications');
-      await addDoc(notificationsCollectionRef, {
-        userId: user.uid,
-        title: 'Pedido Recebido!',
-        description: 'Sua solicitação de entrega foi recebida e está aguardando um entregador.',
-        createdAt: serverTimestamp(),
-        read: false,
-        icon: 'package',
-        link: '/client'
-      });
+    addDoc(deliveriesCollectionRef, newDelivery)
+      .then(async () => {
+        toast({
+          title: "Pedido Enviado!",
+          description: `Seu pedido de entrega foi enviado com sucesso.`,
+        });
+        router.push("/client");
 
-      // BUSCAR ADMINS E NOTIFICAR
-      const adminsQuery = query(collection(firestore, 'users'), where('role', '==', 'admin'));
-      const adminsSnapshot = await getDocs(adminsQuery);
-      
-      const adminNotifPromises = adminsSnapshot.docs.map(adminDoc => {
-        return addDoc(notificationsCollectionRef, {
-          userId: adminDoc.id,
-          title: '📦 Novo Pedido!',
-          description: `${userProfile.displayName} solicitou uma entrega para ${dropoff_neighborhood}.`,
+        // Notificação para o Próprio Cliente
+        addDoc(notificationsCollectionRef, {
+          userId: user.uid,
+          title: 'Pedido Recebido!',
+          description: 'Sua solicitação de entrega foi recebida e está aguardando um entregador.',
           createdAt: serverTimestamp(),
           read: false,
           icon: 'package',
-          link: '/admin'
-        });
-      });
+          link: '/client'
+        }).catch(() => {});
 
-      await Promise.all(adminNotifPromises);
-
-      toast({
-        title: "Pedido Enviado!",
-        description: `Seu pedido de entrega foi enviado com sucesso.`,
-      });
-      router.push("/client");
-    } catch (serverError: any) {
+        // BUSCAR ADMINS E NOTIFICAR
+        try {
+          const adminsQuery = query(collection(firestore, 'users'), where('role', '==', 'admin'));
+          const adminsSnapshot = await getDocs(adminsQuery);
+          
+          adminsSnapshot.docs.forEach(adminDoc => {
+            addDoc(notificationsCollectionRef, {
+              userId: adminDoc.id,
+              title: '📦 Novo Pedido!',
+              description: `${userProfile.displayName} solicitou uma entrega para ${dropoff_neighborhood}.`,
+              createdAt: serverTimestamp(),
+              read: false,
+              icon: 'package',
+              link: '/admin'
+            }).catch(() => {});
+          });
+        } catch (queryError) {
+          const permissionError = new FirestorePermissionError({
+            path: 'users',
+            operation: 'list',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        }
+      })
+      .catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
-            path: 'deliveries',
-            operation: 'create',
-            requestResourceData: newDelivery,
+          path: deliveriesCollectionRef.path,
+          operation: 'create',
+          requestResourceData: newDelivery,
         });
         errorEmitter.emit('permission-error', permissionError);
 
         toast({
-            variant: "destructive",
-            title: "Falha ao enviar pedido",
-            description: "Ocorreu um erro ao enviar seu pedido. Tente novamente.",
+          variant: "destructive",
+          title: "Falha ao enviar pedido",
+          description: "Ocorreu um erro ao enviar seu pedido. Tente novamente.",
         });
-    } finally {
+      })
+      .finally(() => {
         setIsSubmitting(false);
-    }
+      });
   };
 
   return (
