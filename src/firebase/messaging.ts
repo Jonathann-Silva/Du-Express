@@ -23,11 +23,14 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
-      // Registra o Service Worker explicitamente para garantir funcionamento em segundo plano
+      // Registra o Service Worker explicitamente
       const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
         scope: '/'
       });
       
+      // Espera o service worker estar pronto
+      await navigator.serviceWorker.ready;
+
       // Obtém o Token único deste aparelho
       const currentToken = await getToken(messaging, {
         serviceWorkerRegistration: registration,
@@ -39,18 +42,18 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
         const userDoc = await getDoc(userDocRef);
         const existingToken = userDoc.data()?.fcmToken;
 
-        // Salva o token no banco para vincular este celular ao usuário (Admin ou Motoboy)
+        // Salva o token no banco se for novo ou diferente
         if (existingToken !== currentToken) {
           await setDoc(userDocRef, { fcmToken: currentToken }, { merge: true });
-          console.log('FCM: Aparelho registrado para notificações push.');
+          console.log('FCM: Aparelho registrado com sucesso! Token salvo no Firestore.');
         }
       } else {
-        console.warn('FCM: Nenhum token de registro disponível. Verifique as permissões do navegador.');
+        console.warn('FCM: Falha ao gerar token. Tente limpar o cache do navegador.');
       }
     } else {
-      console.warn('FCM: Permissão de notificação negada pelo usuário.');
+      console.warn('FCM: Permissão de notificação negada. O campo fcmToken não será criado.');
     }
   } catch (err) {
-    console.error('FCM: Erro ao configurar notificações push:', err);
+    console.error('FCM: Erro crítico ao configurar push:', err);
   }
 };
