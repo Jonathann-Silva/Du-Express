@@ -3,8 +3,13 @@ import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import { getApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 
+// Chave pública para identificar seu projeto no serviço de push do navegador
 const VAPID_KEY = 'BIiPXefnrJB_RH2iDZNKlvJXUTUFaHNWPkgdqv4WRYSMB7OvzX_GPf0WylTwE23_uYwcDsRAFpijfDi0tE4gEhg';
 
+/**
+ * Solicita permissão e salva o Token do aparelho no Firestore.
+ * Essencial para que o sistema saiba para qual celular enviar a notificação.
+ */
 export const requestPermissionAndSaveToken = async (userId: string) => {
   if (typeof window === 'undefined') return;
 
@@ -19,20 +24,18 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
     const firestore = getFirestore(app);
     const messaging = getMessaging(app);
 
-    // Solicita permissão de forma explícita
+    // 1. Solicita permissão ao usuário
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
-      // Registra o Service Worker (arquivo em /public/firebase-messaging-sw.js)
+      // 2. Registra o Service Worker (o "vigia" que roda com app fechado)
       const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
         scope: '/'
       });
       
-      // Garante que o Service Worker está pronto
       await navigator.serviceWorker.ready;
 
-      // Obtém o Token único deste aparelho
-      // Nota: Em iOS, isso requer que o site seja "Adicionado à Tela de Início"
+      // 3. Obtém o Token (o "endereço" único deste celular)
       const currentToken = await getToken(messaging, {
         serviceWorkerRegistration: registration,
         vapidKey: VAPID_KEY
@@ -43,18 +46,18 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
         const userDoc = await getDoc(userDocRef);
         const existingToken = userDoc.data()?.fcmToken;
 
-        // Salva o token no banco se for novo ou diferente
+        // 4. Salva no banco apenas se for um aparelho novo ou token mudou
         if (existingToken !== currentToken) {
           await setDoc(userDocRef, { fcmToken: currentToken }, { merge: true });
-          console.log('FCM: Aparelho registrado para notificações em segundo plano.');
+          console.log('FCM: Aparelho registrado com sucesso para notificações push.');
         }
       } else {
-        console.warn('FCM: Falha ao gerar token de registro. Tente limpar os dados do site.');
+        console.warn('FCM: Não foi possível gerar o token. Verifique as configurações do navegador.');
       }
     } else {
       console.warn('FCM: Permissão de notificação negada pelo usuário.');
     }
   } catch (err) {
-    console.error('FCM: Erro crítico ao configurar push:', err);
+    console.error('FCM: Erro ao configurar notificações:', err);
   }
 };
