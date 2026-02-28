@@ -2,7 +2,7 @@
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-// Configuração idêntica ao src/firebase/config.ts
+// Configuração do Firebase para o Service Worker (necessário para escuta em background)
 firebase.initializeApp({
   apiKey: "AIzaSyBviQrq6B1yVM3SrEyrAnvpbcqyOwEj5KM",
   authDomain: "studio-7544233787-fa02d.firebaseapp.com",
@@ -14,40 +14,18 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Este evento captura a notificação quando o app está FECHADO ou em SEGUNDO PLANO
+// Esta função é disparada quando uma notificação Push chega e o app está FECHADO ou em background
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Notificação em segundo plano recebida: ', payload);
-
-  const notificationTitle = payload.notification.title;
+  console.log('[firebase-messaging-sw.js] Mensagem recebida em segundo plano: ', payload);
+  
+  const notificationTitle = payload.notification.title || 'Lucas Expresso';
   const notificationOptions = {
-    body: payload.notification.body,
+    body: payload.notification.body || 'Você tem uma nova atualização no sistema.',
     icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
     badge: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
     vibrate: [200, 100, 200],
-    data: {
-      url: payload.data?.link || '/'
-    }
+    data: payload.data
   };
 
-  return self.registration.showNotification(notificationTitle, notificationOptions);
-});
-
-// Ao clicar na notificação com o app fechado, ele abre o site na página correta
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const urlToOpen = event.notification.data.url;
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      for (let i = 0; i < windowClients.length; i++) {
-        const client = windowClients[i];
-        if (client.url === urlToOpen && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
-    })
-  );
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });

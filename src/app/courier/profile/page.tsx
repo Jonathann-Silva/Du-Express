@@ -1,6 +1,7 @@
+
 'use client';
 
-import { ArrowLeft, LogOut, User, Wallet, SlidersHorizontal, Lock, ChevronRight, Settings, Edit, Star, Loader2 } from 'lucide-react';
+import { ArrowLeft, LogOut, User, Wallet, SlidersHorizontal, Lock, ChevronRight, Settings, Edit, Star, Loader2, Smartphone, CheckCircle2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
@@ -14,6 +15,8 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useUser, useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export default function CourierProfilePage() {
     const { user, userProfile, loading } = useUser();
@@ -90,6 +93,8 @@ export default function CourierProfilePage() {
         { href: "/courier/profile/security", icon: Lock, title: "Segurança", description: "Senha e acesso biométrico" },
     ];
 
+    const isDeviceRegistered = !!userProfile?.fcmToken;
+
     return (
         <>
             <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b">
@@ -151,6 +156,32 @@ export default function CourierProfilePage() {
                             </div>
                         </>
                     )}
+                </section>
+
+                {/* Device Registration Status Indicator */}
+                <section className="px-4 mb-4">
+                    <Card className={cn(
+                        "p-4 border-none shadow-sm flex items-center gap-4",
+                        isDeviceRegistered ? "bg-emerald-500/10 text-emerald-700" : "bg-amber-500/10 text-amber-700"
+                    )}>
+                        <div className={cn(
+                            "size-10 rounded-xl flex items-center justify-center",
+                            isDeviceRegistered ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
+                        )}>
+                            {isDeviceRegistered ? <Smartphone className="size-5" /> : <AlertCircle className="size-5" />}
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-bold leading-none">
+                                {isDeviceRegistered ? "Aparelho Conectado" : "Notificações Desligadas"}
+                            </p>
+                            <p className="text-[10px] opacity-80 mt-1 font-medium">
+                                {isDeviceRegistered 
+                                    ? "Você receberá alertas de novas tarefas mesmo com o celular bloqueado."
+                                    : "Permita as notificações para não perder pedidos da central."}
+                            </p>
+                        </div>
+                        {isDeviceRegistered && <CheckCircle2 className="size-4 text-emerald-500" />}
+                    </Card>
                 </section>
                 
                 <section className="px-4 py-2">

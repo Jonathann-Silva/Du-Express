@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -20,7 +21,10 @@ import {
   Loader2,
   Megaphone,
   Send,
-  Timer
+  Timer,
+  Smartphone,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -247,6 +251,7 @@ export default function AdminSettingsPage() {
   };
   
   const isLoading = adminLoading;
+  const isDeviceRegistered = !!adminUser?.fcmToken;
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -291,6 +296,37 @@ export default function AdminSettingsPage() {
                     </div>
                 </CardContent>
             </Card>
+        </section>
+
+        {/* Device Registration Status */}
+        <section>
+          <div className="flex items-center gap-2 mb-4 px-1">
+            <Smartphone className="text-primary size-5" />
+            <h2 className="text-lg font-bold font-headline">Status do Dispositivo</h2>
+          </div>
+          <Card className={cn(
+            "p-4 border shadow-sm transition-all",
+            isDeviceRegistered ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"
+          )}>
+            <div className="flex items-center gap-4">
+              <div className={cn(
+                "size-12 rounded-2xl flex items-center justify-center shadow-sm",
+                isDeviceRegistered ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
+              )}>
+                {isDeviceRegistered ? <CheckCircle2 className="size-6" /> : <AlertCircle className="size-6" />}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-foreground">
+                  {isDeviceRegistered ? "Celular Conectado" : "Dispositivo não Registrado"}
+                </p>
+                <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+                  {isDeviceRegistered 
+                    ? "Este aparelho está pronto para receber notificações push, mesmo com o app fechado."
+                    : "Permita as notificações no seu navegador para receber alertas de novos pedidos."}
+                </p>
+              </div>
+            </div>
+          </Card>
         </section>
 
         <section>
