@@ -1,4 +1,3 @@
-
 'use client';
 import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import { getApp } from 'firebase/app';
@@ -20,18 +19,20 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
     const firestore = getFirestore(app);
     const messaging = getMessaging(app);
 
+    // Solicita permissão de forma explícita
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
-      // Registra o Service Worker explicitamente
+      // Registra o Service Worker (arquivo em /public/firebase-messaging-sw.js)
       const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
         scope: '/'
       });
       
-      // Espera o service worker estar pronto
+      // Garante que o Service Worker está pronto
       await navigator.serviceWorker.ready;
 
       // Obtém o Token único deste aparelho
+      // Nota: Em iOS, isso requer que o site seja "Adicionado à Tela de Início"
       const currentToken = await getToken(messaging, {
         serviceWorkerRegistration: registration,
         vapidKey: VAPID_KEY
@@ -45,13 +46,13 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
         // Salva o token no banco se for novo ou diferente
         if (existingToken !== currentToken) {
           await setDoc(userDocRef, { fcmToken: currentToken }, { merge: true });
-          console.log('FCM: Aparelho registrado com sucesso! Token salvo no Firestore.');
+          console.log('FCM: Aparelho registrado para notificações em segundo plano.');
         }
       } else {
-        console.warn('FCM: Falha ao gerar token. Tente limpar o cache do navegador.');
+        console.warn('FCM: Falha ao gerar token de registro. Tente limpar os dados do site.');
       }
     } else {
-      console.warn('FCM: Permissão de notificação negada. O campo fcmToken não será criado.');
+      console.warn('FCM: Permissão de notificação negada pelo usuário.');
     }
   } catch (err) {
     console.error('FCM: Erro crítico ao configurar push:', err);
