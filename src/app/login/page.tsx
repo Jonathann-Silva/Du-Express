@@ -146,7 +146,7 @@ function LoginContent() {
       </main>
 
       <footer className="p-8 pb-12">
-        <p className="text-center text-xs text-muted-foreground">Versão do App 1.0.0</p>
+        <p className="text-center text-xs text-muted-foreground">Versão do App 0.0.9 (teste)</p>
       </footer>
     </div>
   );
