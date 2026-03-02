@@ -203,7 +203,7 @@ export default function TaskDetailsPage() {
                 </div>
                 <div>
                     <p className="text-[10px] font-black uppercase tracking-widest leading-none opacity-80">Atenção Entregador</p>
-                    <h4 className="text-base font-bold mt-1">RECEBER DINHEIRO/PIX</h4>
+                    <h4 className="text-base font-bold mt-1">RECEBER DINHEIRO OU PIX</h4>
                     <p className="text-[10px] mt-0.5 opacity-90">Este cliente não usa crediário. Você deve cobrar no destino.</p>
                 </div>
             </div>

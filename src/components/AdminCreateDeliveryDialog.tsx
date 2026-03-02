@@ -105,7 +105,7 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
       status: isAssigned ? 'accepted' : 'pending',
       createdAt: serverTimestamp(),
       paid: false,
-      paidByClient: false,
+      paidByClient: paymentMethod === 'collect',
       paymentMethod: paymentMethod
     };
 
@@ -198,18 +198,18 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
             </Label>
             <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="grid grid-cols-2 gap-3">
                 <Label htmlFor="admin-pay-credit" className={cn(
-                    "flex items-center gap-2 p-3 rounded-xl border transition-all cursor-pointer text-xs",
+                    "flex items-center justify-center p-3 rounded-xl border transition-all cursor-pointer text-xs",
                     paymentMethod === 'credit' ? "border-primary bg-primary/5 font-bold" : "border-border bg-muted/30"
                 )}>
                     <RadioGroupItem value="credit" id="admin-pay-credit" className="sr-only" />
-                    <CreditCard className="size-3.5" /> Crediário
+                    <CreditCard className="size-3.5 mr-2" /> Crediário
                 </Label>
                 <Label htmlFor="admin-pay-collect" className={cn(
-                    "flex items-center gap-2 p-3 rounded-xl border transition-all cursor-pointer text-xs",
+                    "flex items-center justify-center p-3 rounded-xl border transition-all cursor-pointer text-xs",
                     paymentMethod === 'collect' ? "border-primary bg-primary/5 font-bold" : "border-border bg-muted/30"
                 )}>
                     <RadioGroupItem value="collect" id="admin-pay-collect" className="sr-only" />
-                    <Banknote className="size-3.5" /> Receber
+                    <Banknote className="size-3.5 mr-2" /> Receber
                 </Label>
             </RadioGroup>
           </div>

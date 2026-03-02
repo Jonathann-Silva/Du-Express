@@ -134,7 +134,7 @@ export default function RequestDeliveryPage() {
       clientId: user.uid,
       createdAt: serverTimestamp(),
       observations: observations || "",
-      paidByClient: paymentMethod !== 'credit', // Pix e Dinheiro já contam como pagos pela loja
+      paidByClient: paymentMethod === 'collect', // "Receber" já conta como liquidado pela loja
       paymentMethod: paymentMethod
     };
 
@@ -202,22 +202,19 @@ export default function RequestDeliveryPage() {
 
           <section className="space-y-4">
             <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">2. Opção de Pagamento</h2>
-            <RadioGroup value={paymentMethod || ""} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="grid gap-3">
+            <RadioGroup value={paymentMethod || ""} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="grid grid-cols-2 gap-3">
                 {[
-                    { id: 'pay-credit', value: 'credit', label: 'Crediário', desc: 'Cobrança semanal no app', icon: CreditCard, color: 'bg-primary' },
-                    { id: 'pay-pix', value: 'pix', label: 'Pix (Receber no Local)', desc: 'Pagamento instantâneo via QR Code', icon: Smartphone, color: 'bg-[#32BCAD]' },
-                    { id: 'pay-cash', value: 'cash', label: 'Dinheiro (Receber no Local)', desc: 'Pagamento físico ao entregador', icon: Banknote, color: 'bg-emerald-500' }
+                    { id: 'pay-credit', value: 'credit', label: 'Crediário', desc: 'Cobrança semanal', icon: CreditCard, color: 'bg-primary' },
+                    { id: 'pay-collect', value: 'collect', label: 'Receber', desc: 'Dinheiro ou Pix', icon: Banknote, color: 'bg-emerald-500' }
                 ].map(opt => (
                     <div key={opt.id} className="relative">
                         <RadioGroupItem value={opt.value} id={opt.id} className="sr-only" />
-                        <Label htmlFor={opt.id} className={cn("flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer", paymentMethod === opt.value ? "border-primary bg-primary/5 shadow-sm" : "border-muted bg-card")}>
-                            <div className={cn("size-10 rounded-xl flex items-center justify-center text-white", paymentMethod === opt.value ? opt.color : "bg-muted text-muted-foreground")}>
-                                <opt.icon className="size-5" />
+                        <Label htmlFor={opt.id} className={cn("flex flex-col items-center text-center p-4 rounded-2xl border-2 transition-all cursor-pointer", paymentMethod === opt.value ? "border-primary bg-primary/5 shadow-sm" : "border-muted bg-card")}>
+                            <div className={cn("size-12 rounded-2xl flex items-center justify-center text-white mb-2 shadow-lg", paymentMethod === opt.value ? opt.color : "bg-muted text-muted-foreground")}>
+                                <opt.icon className="size-6" />
                             </div>
-                            <div className="flex-1">
-                                <p className="font-bold text-sm">{opt.label}</p>
-                                <p className="text-[10px] text-muted-foreground font-medium">{opt.desc}</p>
-                            </div>
+                            <p className="font-bold text-sm leading-tight">{opt.label}</p>
+                            <p className="text-[9px] text-muted-foreground font-medium mt-1 leading-tight">{opt.desc}</p>
                         </Label>
                     </div>
                 ))}

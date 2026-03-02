@@ -272,7 +272,7 @@ function TaskCard({ task, onAction, isUpdating, courierRate }: { task: Delivery,
         <div className="mb-4 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 flex items-center gap-2">
             <Banknote className="size-4 text-amber-600" />
             <p className="text-[10px] font-black text-amber-700 uppercase tracking-tighter">
-                COBRAR CLIENTE: RECEBER EM DINHEIRO OU PIX
+                COBRAR CLIENTE: DINHEIRO OU PIX
             </p>
         </div>
       )}

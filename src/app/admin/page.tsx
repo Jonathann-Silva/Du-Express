@@ -286,10 +286,10 @@ export default function AdminDashboard() {
                       <div>
                         <h4 className="font-bold text-sm leading-tight"><ClientName clientId={req.clientId} /></h4>
                         <div className="flex items-center gap-1.5 mt-1">
-                            {req.paymentMethod === 'collect' ? (
-                                <Badge className="bg-amber-500 text-white text-[8px] uppercase px-1.5 h-4">Receber</Badge>
-                            ) : (
+                            {req.paymentMethod === 'credit' ? (
                                 <Badge variant="outline" className="text-[8px] uppercase px-1.5 h-4 text-muted-foreground">Crediário</Badge>
+                            ) : (
+                                <Badge className="bg-emerald-500 text-white text-[8px] uppercase px-1.5 h-4">Receber</Badge>
                             )}
                         </div>
                       </div>
