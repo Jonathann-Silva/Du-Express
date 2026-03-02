@@ -1,11 +1,12 @@
+
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
-import { CheckCircle, Package, Plus, Timer, XCircle, ShieldCheck, AlertOctagon, CreditCard, ChevronRight, Loader2, X } from 'lucide-react';
+import { CheckCircle, Package, Plus, Timer, XCircle, ShieldCheck, AlertOctagon, CreditCard, ChevronRight, Loader2, X, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { collection, query, where, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -113,21 +114,33 @@ export default function ClientHomePage() {
       .slice(0, 3);
   }, [allDeliveries]);
 
-  const handleCancelDelivery = async () => {
-    if (!firestore || !deliveryToCancel) return;
+  const handleRequestCancellation = async () => {
+    if (!firestore || !deliveryToCancel || !userProfile) return;
     
     setIsCancelling(true);
     const docRef = doc(firestore, 'deliveries', deliveryToCancel.id);
-    const updateData = { 
-      status: 'refused',
-      observations: 'Cancelado pelo cliente.'
-    };
+    const updateData = { cancelRequested: true };
 
     try {
-      await updateDoc(docRef, updateData);
+      const batch = writeBatch(firestore);
+      batch.update(docRef, updateData);
+
+      // Notifica o admin
+      const adminNotifRef = doc(collection(firestore, 'notifications'));
+      batch.set(adminNotifRef, {
+        userId: 'admin',
+        title: 'Cancelamento Solicitado',
+        description: `A loja ${userProfile.displayName} solicitou o cancelamento de um pedido.`,
+        createdAt: serverTimestamp(),
+        read: false,
+        icon: 'alert'
+      });
+
+      await batch.commit();
+      
       toast({
-        title: "Pedido Cancelado",
-        description: "Sua solicitação de entrega foi removida.",
+        title: "Solicitação Enviada",
+        description: "Aguardando confirmação do administrador.",
       });
       setDeliveryToCancel(null);
     } catch (serverError: any) {
@@ -138,7 +151,7 @@ export default function ClientHomePage() {
       });
       errorEmitter.emit('permission-error', permissionError);
       toast({
-        title: "Erro ao cancelar",
+        title: "Erro ao solicitar",
         variant: "destructive"
       });
     } finally {
@@ -149,7 +162,7 @@ export default function ClientHomePage() {
   const isLoading = userLoading || loadingInProgress || loadingPending || loadingRecent;
   
   return (
-    <>
+    <div className="flex flex-col h-full bg-background outline-none" tabIndex={-1}>
       <header className="flex items-center justify-between px-6 pt-8 pb-4 sticky top-0 z-10 bg-background/80 backdrop-blur-md outline-none">
         <Link href="/client/settings" className="flex items-center gap-3 group">
           <Avatar className="size-12 border-2 border-primary group-hover:border-primary/50 transition-colors">
@@ -319,9 +332,9 @@ export default function ClientHomePage() {
       <AlertDialog open={!!deliveryToCancel} onOpenChange={(open) => !open && setDeliveryToCancel(null)}>
         <AlertDialogContent className="rounded-3xl max-w-[90vw]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar Pedido?</AlertDialogTitle>
+            <AlertDialogTitle>Solicitar Cancelamento?</AlertDialogTitle>
             <AlertDialogDescription>
-              Você tem certeza que deseja cancelar esta entrega? Esta ação não pode ser desfeita.
+              O administrador será notificado e precisará confirmar o cancelamento deste pedido.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row">
@@ -329,17 +342,17 @@ export default function ClientHomePage() {
             <AlertDialogAction 
               onClick={(e) => {
                 e.preventDefault();
-                handleCancelDelivery();
+                handleRequestCancellation();
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold"
               disabled={isCancelling}
             >
-              {isCancelling ? <Loader2 className="animate-spin size-4" /> : 'Confirmar Cancelamento'}
+              {isCancelling ? <Loader2 className="animate-spin size-4" /> : 'Confirmar Solicitação'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
 
@@ -353,7 +366,10 @@ const statusConfig = {
 
 
 function RecentOrderCard({ delivery, onCancel }: { delivery: Delivery, onCancel?: (delivery: Delivery) => void }) {
-  const currentStatus = statusConfig[delivery.status] || statusConfig.pending;
+  const currentStatus = delivery.cancelRequested 
+    ? { label: 'CANC. SOLICITADO', icon: <AlertTriangle className="text-red-500 size-5" />, className: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' }
+    : (statusConfig[delivery.status] || statusConfig.pending);
+
   const isFinished = delivery.status === 'finished';
   const isRefused = delivery.status === 'refused';
   const isPending = delivery.status === 'pending';
@@ -386,7 +402,7 @@ function RecentOrderCard({ delivery, onCancel }: { delivery: Delivery, onCancel?
           <div className={cn('px-2 py-1 rounded text-[10px] font-bold', currentStatus.className)}>
             {currentStatus.label}
           </div>
-          {isPending && !delivery.courierId && (
+          {isPending && !delivery.courierId && !delivery.cancelRequested && (
             <Button 
               variant="outline" 
               size="icon" 
@@ -406,7 +422,7 @@ function RecentOrderCard({ delivery, onCancel }: { delivery: Delivery, onCancel?
           <div className="flex flex-col items-end gap-1">
             {isRefused ? (
               <span className="text-red-500 font-bold uppercase text-[10px] text-right max-w-[180px]">
-                {isTimeOutCancellation ? 'Não aceita no prazo' : 'Recusada pelo Admin'}
+                {isTimeOutCancellation ? 'Não aceita no prazo' : (delivery.cancelRequested ? 'Cancelamento Confirmado' : 'Recusada pelo Admin')}
               </span>
             ) : (
               <>
@@ -421,7 +437,9 @@ function RecentOrderCard({ delivery, onCancel }: { delivery: Delivery, onCancel?
                    </span>
                 )}
                 {!delivery.courierId && !isFinished && !isRefused && (
-                  <span className="text-muted-foreground italic">Aguardando entregador...</span>
+                  <span className="text-muted-foreground italic">
+                    {delivery.cancelRequested ? 'Aguardando Admin...' : 'Aguardando entregador...'}
+                  </span>
                 )}
               </>
             )}

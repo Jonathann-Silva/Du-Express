@@ -59,12 +59,12 @@ service cloud.firestore {
 
       // --- Client Rules ---
       
-      // A client can cancel (refuse) their own delivery if it's still pending
+      // A client can request cancellation if it's still pending
       allow update: if isAuth() 
                     && resource.data.clientId == request.auth.uid
                     && resource.data.status == 'pending'
-                    && request.resource.data.status == 'refused'
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'observations']);
+                    && request.resource.data.cancelRequested == true
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cancelRequested']);
 
       // Read rules for various roles
       allow get: if isAdmin() 

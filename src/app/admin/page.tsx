@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { CircleDot, MapPin, Package, Bike, Wallet, Truck, CheckCircle, XCircle, Loader2, Banknote, ChevronRight, CreditCard } from 'lucide-react';
+import { CircleDot, MapPin, Package, Bike, Wallet, Truck, CheckCircle, XCircle, Loader2, Banknote, ChevronRight, CreditCard, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -175,11 +176,13 @@ export default function AdminDashboard() {
     const clientNotifRef = doc(collection(firestore, 'notifications'));
 
     const batch = writeBatch(firestore);
-    batch.update(deliveryRef, { status: 'refused', observations: 'Recusado pelo administrador.' });
+    const refuseReason = delivery.cancelRequested ? 'Cancelamento solicitado pela loja e confirmado pela central.' : 'Recusado pelo administrador.';
+    
+    batch.update(deliveryRef, { status: 'refused', observations: refuseReason });
     batch.set(clientNotifRef, {
       userId: delivery.clientId,
       title: 'Entrega Recusada',
-      description: `Seu pedido foi recusado.`,
+      description: refuseReason,
       createdAt: serverTimestamp(),
       read: false,
       icon: 'alert',
@@ -204,7 +207,7 @@ export default function AdminDashboard() {
   const isLoading = userLoading || loadingRequests;
   
   return (
-    <>
+    <div className="flex flex-col h-full bg-background outline-none" tabIndex={-1}>
       <header className="flex items-center justify-between px-6 pt-6 pb-4 bg-background z-10 shrink-0">
         <Link href="/admin/settings" className="flex items-center gap-3 group">
           <div className="size-12 overflow-hidden rounded-full border-2 border-primary/20 bg-primary/10 flex items-center justify-center group-hover:border-primary/50 transition-colors">
@@ -276,7 +279,13 @@ export default function AdminDashboard() {
               <Skeleton className="h-48 w-full rounded-2xl" />
             ) : requests.length > 0 ? (
               requests.map((req) => (
-                <Card key={req.id} className="p-4 rounded-2xl shadow-sm">
+                <Card key={req.id} className={cn("p-4 rounded-2xl shadow-sm transition-all", req.cancelRequested && "border-red-500 bg-red-50/10")}>
+                  {req.cancelRequested && (
+                    <div className="mb-3 p-2 bg-red-500/10 border border-red-200 rounded-lg flex items-center gap-2 animate-pulse">
+                      <AlertTriangle className="size-4 text-red-600" />
+                      <p className="text-[10px] font-black text-red-600 uppercase">O Cliente solicitou o cancelamento</p>
+                    </div>
+                  )}
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-3">
                       <div className={cn("p-2 rounded-lg", statusDisplayConfig[req.status]?.iconBg)}>
@@ -313,8 +322,14 @@ export default function AdminDashboard() {
                     <div className="flex gap-2">
                       {req.status === 'pending' && (
                         <>
-                          <Button variant="outline" size="sm" onClick={() => setDeliveryToRefuse(req)}>Recusar</Button>
-                          <Button size="sm" onClick={() => setSelectedDelivery(req)}>Atribuir</Button>
+                          <Button 
+                            variant={req.cancelRequested ? "destructive" : "outline"} 
+                            size="sm" 
+                            onClick={() => setDeliveryToRefuse(req)}
+                          >
+                            {req.cancelRequested ? 'Confirmar Cancelamento' : 'Recusar'}
+                          </Button>
+                          <Button size="sm" onClick={() => setSelectedDelivery(req)} disabled={req.cancelRequested}>Atribuir</Button>
                         </>
                       )}
                       {(req.status === 'accepted' || req.status === 'in-progress') && (
@@ -348,21 +363,25 @@ export default function AdminDashboard() {
       <AlertDialog open={!!deliveryToRefuse} onOpenChange={(isOpen) => !isOpen && setDeliveryToRefuse(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Recusar Pedido?</AlertDialogTitle>
-            <AlertDialogDescription>O cliente será notificado.</AlertDialogDescription>
+            <AlertDialogTitle>{deliveryToRefuse?.cancelRequested ? 'Confirmar Cancelamento?' : 'Recusar Pedido?'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deliveryToRefuse?.cancelRequested 
+                ? 'O cliente solicitou este cancelamento. Ao confirmar, o pedido será recusado.' 
+                : 'O cliente será notificado sobre a recusa.'}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRefusing}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isRefusing}>Voltar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deliveryToRefuse && handleRefuse(deliveryToRefuse)}
               disabled={isRefusing}
               className={cn(buttonVariants({ variant: "destructive" }))}
             >
-              {isRefusing ? <Loader2 className="animate-spin" /> : 'Confirmar Recusa'}
+              {isRefusing ? <Loader2 className="animate-spin" /> : (deliveryToRefuse?.cancelRequested ? 'Confirmar e Recusar' : 'Confirmar Recusa')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "userProfile": {
@@ -133,6 +134,10 @@
         "finishedAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "cancelRequested": {
+          "type": "boolean",
+          "description": "Indicates if the client has requested to cancel this delivery."
         }
       },
       "required": ["pickup", "dropoff", "price", "status", "clientId", "createdAt"]
