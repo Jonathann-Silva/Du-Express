@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ClientName } from '@/components/info/ClientName';
 import { CourierInfo } from '@/components/info/CourierInfo';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { AssignCourierDialog } from '@/components/AssignCourierDialog';
 import { AdminCreateDeliveryDialog } from '@/components/AdminCreateDeliveryDialog';
 
@@ -157,15 +157,15 @@ export default function AdminDeliveriesPage() {
       
       {/* Dialog para Atribuir Motoboy a pedido existente */}
       <Dialog open={!!selectedDelivery} onOpenChange={(isOpen) => !isOpen && setSelectedDelivery(null)}>
-        <DialogContent>
-            {selectedDelivery && (
-                <AssignCourierDialog 
-                    delivery={selectedDelivery} 
-                    onAssign={handleAssign}
-                    onCancel={() => setSelectedDelivery(null)}
-                />
-            )}
-        </DialogContent>
+        {selectedDelivery && (
+          <DialogContent>
+              <AssignCourierDialog 
+                  delivery={selectedDelivery} 
+                  onAssign={handleAssign}
+                  onCancel={() => setSelectedDelivery(null)}
+              />
+          </DialogContent>
+        )}
       </Dialog>
 
       {/* Dialog para Criar Nova Entrega (Admin) */}

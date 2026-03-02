@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -30,6 +31,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { UserProfile } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { DialogTitle } from '@/components/ui/dialog';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface AdminCreateDeliveryDialogProps {
   onClose: () => void;
@@ -61,11 +65,6 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
 
   const { data: clients, loading: loadingClients } = useCollection<UserProfile>(clientsQuery);
   const { data: couriers, loading: loadingCouriers } = useCollection<UserProfile>(couriersQuery);
-
-  const selectedClient = useMemo(() => 
-    clients?.find(c => c.uid === selectedClientId), 
-    [clients, selectedClientId]
-  );
 
   // Atualiza endereço e preço sugerido ao mudar cliente
   const handleClientChange = (clientId: string) => {
@@ -101,54 +100,56 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
       observations,
       status: isAssigned ? 'accepted' : 'pending',
       createdAt: serverTimestamp(),
-      paid: false
+      paid: false,
+      paidByClient: false
     };
 
-    try {
-      const deliveriesRef = collection(firestore, 'deliveries');
-      const docRef = await addDoc(deliveriesRef, deliveryData);
+    const deliveriesRef = collection(firestore, 'deliveries');
+    const notificationsRef = collection(firestore, 'notifications');
 
-      // Notificações
-      const notificationsRef = collection(firestore, 'notifications');
-      
-      // Notificação Cliente
-      await addDoc(notificationsRef, {
-        userId: selectedClientId,
-        title: isAssigned ? 'Pedido Aceito!' : 'Pedido Lançado!',
-        description: isAssigned 
-          ? 'Um entregador já foi atribuído ao seu pedido criado pela central.' 
-          : 'Seu pedido foi lançado pela central e aguarda um entregador.',
-        createdAt: serverTimestamp(),
-        read: false,
-        icon: 'package',
-        link: '/client'
-      });
-
-      // Notificação Entregador (se atribuído)
-      if (isAssigned) {
-        await addDoc(notificationsRef, {
-          userId: selectedCourierId,
-          title: 'Nova Entrega Atribuída!',
-          description: `A central te escalou para uma entrega em ${dropoff}.`,
+    addDoc(deliveriesRef, deliveryData)
+      .then(() => {
+        toast({ title: "Entrega Lançada com Sucesso!" });
+        
+        // Notificação Cliente
+        addDoc(notificationsRef, {
+          userId: selectedClientId,
+          title: isAssigned ? 'Pedido Aceito!' : 'Pedido Lançado!',
+          description: isAssigned 
+            ? 'Um entregador já foi atribuído ao seu pedido criado pela central.' 
+            : 'Seu pedido foi lançado pela central e aguarda um entregador.',
           createdAt: serverTimestamp(),
           read: false,
           icon: 'package',
-          link: '/courier'
+          link: '/client'
         });
-      }
 
-      toast({ title: "Entrega Lançada com Sucesso!" });
-      onClose();
-    } catch (error) {
-      console.error(error);
-      toast({ 
-        title: "Erro ao criar", 
-        description: "Verifique sua conexão e permissões.", 
-        variant: "destructive" 
+        // Notificação Entregador (se atribuído)
+        if (isAssigned) {
+          addDoc(notificationsRef, {
+            userId: selectedCourierId,
+            title: 'Nova Entrega Atribuída!',
+            description: `A central te escalou para uma entrega em ${dropoff}.`,
+            createdAt: serverTimestamp(),
+            read: false,
+            icon: 'package',
+            link: '/courier'
+          });
+        }
+        
+        onClose();
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: 'deliveries',
+          operation: 'create',
+          requestResourceData: deliveryData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
+        setIsSubmitting(false);
       });
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   return (
@@ -156,7 +157,7 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
       <header className="p-4 border-b flex items-center justify-between shrink-0 bg-muted/20">
         <div className="flex items-center gap-2 text-primary">
           <Plus className="size-5" />
-          <h2 className="text-lg font-bold font-headline">Nova Entrega Central</h2>
+          <DialogTitle className="text-lg font-bold font-headline">Nova Entrega Central</DialogTitle>
         </div>
         <Button variant="ghost" size="icon" className="rounded-full" onClick={onClose}>
           <X className="size-5" />

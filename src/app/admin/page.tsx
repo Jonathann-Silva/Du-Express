@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -9,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -327,15 +328,15 @@ export default function AdminDashboard() {
       </main>
 
       <Dialog open={!!selectedDelivery} onOpenChange={(isOpen) => !isOpen && setSelectedDelivery(null)}>
-        <DialogContent>
-            {selectedDelivery && (
-                <AssignCourierDialog 
-                    delivery={selectedDelivery} 
-                    onAssign={() => setSelectedDelivery(null)}
-                    onCancel={() => setSelectedDelivery(null)}
-                />
-            )}
-        </DialogContent>
+        {selectedDelivery && (
+          <DialogContent>
+              <AssignCourierDialog 
+                  delivery={selectedDelivery} 
+                  onAssign={() => setSelectedDelivery(null)}
+                  onCancel={() => setSelectedDelivery(null)}
+              />
+          </DialogContent>
+        )}
       </Dialog>
 
       <AlertDialog open={!!deliveryToRefuse} onOpenChange={(isOpen) => !isOpen && setDeliveryToRefuse(null)}>
