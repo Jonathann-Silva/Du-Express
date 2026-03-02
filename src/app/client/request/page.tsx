@@ -11,7 +11,7 @@ import { useUser, useFirestore, useCollection } from "@/firebase";
 import { collection, addDoc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,7 +27,7 @@ export default function RequestDeliveryPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
 
   // Busca faturas para verificar bloqueio
   const deliveriesQuery = useMemo(() => {
@@ -61,12 +61,6 @@ export default function RequestDeliveryPage() {
     ].filter(r => r.value != null && r.value > 0);
   }, [userProfile]);
 
-  useEffect(() => {
-    if (rates.length > 0 && selectedPrice === null) {
-        setSelectedPrice(rates[0].value!);
-    }
-  }, [rates, selectedPrice]);
-
   const handleRequest = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (blockStatus.isBlocked) {
@@ -92,6 +86,15 @@ export default function RequestDeliveryPage() {
             variant: "destructive",
             title: "Selecione uma taxa",
             description: "Por favor, escolha um tipo de entrega.",
+        });
+        return;
+    }
+
+    if (paymentMethod === null) {
+        toast({
+            variant: "destructive",
+            title: "Selecione o pagamento",
+            description: "Por favor, escolha uma opção de pagamento.",
         });
         return;
     }
@@ -292,7 +295,7 @@ export default function RequestDeliveryPage() {
 
           <section className="space-y-4">
             <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">2. Opção de Pagamento</h2>
-            <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="grid grid-cols-1 gap-3">
+            <RadioGroup value={paymentMethod || ""} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="grid grid-cols-1 gap-3">
                 <div className="relative">
                     <RadioGroupItem value="credit" id="pay-credit" className="peer sr-only" />
                     <Label 
@@ -387,7 +390,11 @@ export default function RequestDeliveryPage() {
           </section>
 
           <div className="pt-6">
-            <Button type="submit" disabled={isSubmitting || userLoading || selectedPrice === null || blockStatus.isBlocked} className="w-full h-16 text-lg font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95">
+            <Button 
+                type="submit" 
+                disabled={isSubmitting || userLoading || selectedPrice === null || paymentMethod === null || blockStatus.isBlocked} 
+                className="w-full h-16 text-lg font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95"
+            >
                 {isSubmitting ? <Loader2 className="animate-spin size-6" /> : (
                     <>
                         SOLICITAR ENTREGA
