@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -155,6 +154,22 @@ export default function ClientFinancePage() {
 
       <main className="flex-1 p-4 overflow-y-auto pb-32">
         
+        {/* Filtro de Semana - Agora no Topo */}
+        <section className="mb-6">
+            <Card className="p-2 bg-muted/50 border shadow-sm rounded-2xl flex items-center justify-between">
+                <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="rounded-xl h-12 w-12" disabled={isLoading}>
+                    <ChevronLeft className="size-6" />
+                </Button>
+                <div className="text-center">
+                    <p className="text-sm font-bold">{periodLabel}</p>
+                    <p className="text-[10px] uppercase font-black text-primary tracking-widest leading-none mt-0.5">Ciclo Seg-Sáb</p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={handleNextWeek} className="rounded-xl h-12 w-12" disabled={isLoading}>
+                    <ChevronRight className="size-6" />
+                </Button>
+            </Card>
+        </section>
+
         {/* Resumo de Dívida Global */}
         <section className="mb-6">
             <Card className={cn(
@@ -181,22 +196,6 @@ export default function ClientFinancePage() {
                         <p className="text-[10px] font-bold leading-tight">Você possui débitos de semanas anteriores. Regularize agora para desbloquear seu acesso.</p>
                     </div>
                 )}
-            </Card>
-        </section>
-
-        {/* Filtro de Semana */}
-        <section className="mb-6">
-            <Card className="p-2 bg-muted/50 border shadow-sm rounded-2xl flex items-center justify-between">
-                <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="rounded-xl h-12 w-12" disabled={isLoading}>
-                    <ChevronLeft className="size-6" />
-                </Button>
-                <div className="text-center">
-                    <p className="text-sm font-bold">{periodLabel}</p>
-                    <p className="text-[10px] uppercase font-black text-primary tracking-widest leading-none mt-0.5">Ciclo Seg-Sáb</p>
-                </div>
-                <Button variant="ghost" size="icon" onClick={handleNextWeek} className="rounded-xl h-12 w-12" disabled={isLoading}>
-                    <ChevronRight className="size-6" />
-                </Button>
             </Card>
         </section>
 
