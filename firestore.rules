@@ -96,8 +96,10 @@ service cloud.firestore {
 
     // SETTINGS (Sensitive Info)
     match /settings/{settingId} {
-      // Only admins can manage settings
-      allow get, write: if isAdmin();
+      // Rules (like delivery time limit) can be read by anyone authenticated
+      // Finance settings remain restricted to admins
+      allow get: if isAdmin() || (isAuth() && settingId == 'rules');
+      allow write: if isAdmin();
       allow list, delete: if false;
     }
   }
