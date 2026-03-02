@@ -2,8 +2,9 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Wallet, CheckCircle2, AlertCircle, Loader2, Info, Banknote, ChevronRight, AlertTriangle, Calendar, Ban, Smartphone } from 'lucide-react';
+import { ArrowLeft, CreditCard, Wallet, CheckCircle2, AlertCircle, Loader2, Info, Banknote, ChevronRight, AlertTriangle, Calendar, Ban, Smartphone, QrCode } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,12 +15,20 @@ import { format, startOfWeek, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { cn, checkClientBlockStatus } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function ClientFinancePage() {
   const { user, userProfile, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isProcessing, setIsUpdating] = useState(false);
+  const [isQRCodeOpen, setIsQRCodeOpen] = useState(false);
 
   // Busca todas as entregas concluídas da loja
   const deliveriesQuery = useMemo(() => {
@@ -88,8 +97,9 @@ export default function ClientFinancePage() {
             await batch.commit();
             toast({
                 title: "Pagamento Confirmado!",
-                description: "Obrigado! Suas entregas foram marcadas como pagas.",
+                description: "Obrigado! Suas entregas foram marcadas como pagas no sistema.",
             });
+            setIsQRCodeOpen(false);
         } catch (e) {
             toast({ title: "Erro ao processar", variant: "destructive" });
         } finally {
@@ -162,16 +172,16 @@ export default function ClientFinancePage() {
         {totalDebt > 0 && (
             <section className="mb-8 space-y-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Pagar com PIX</h3>
-                <Card className="p-4 border-primary/20 bg-primary/5 cursor-pointer active:scale-[0.98] transition-all" onClick={handlePayDeliveries}>
+                <Card className="p-4 border-primary/20 bg-primary/5 cursor-pointer active:scale-[0.98] transition-all" onClick={() => setIsQRCodeOpen(true)}>
                     <div className="flex items-center gap-4">
                         <div className="size-12 rounded-xl bg-[#32BCAD] flex items-center justify-center shadow-lg">
                             <Smartphone className="text-white size-6" />
                         </div>
                         <div className="flex-1">
-                            <p className="font-bold text-sm">Pagar via PIX</p>
-                            <p className="text-xs text-muted-foreground">Checkout seguro via Mercado Pago</p>
+                            <p className="font-bold text-sm">Gerar QR Code PIX</p>
+                            <p className="text-xs text-muted-foreground">Pagar saldo de {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                         </div>
-                        {isProcessing ? <Loader2 className="animate-spin text-primary" /> : <ChevronRight className="text-primary/40" />}
+                        <ChevronRight className="text-primary/40" />
                     </div>
                 </Card>
                 <div className="flex gap-2 p-3 bg-muted/50 rounded-xl border border-dashed">
@@ -229,6 +239,70 @@ export default function ClientFinancePage() {
             </div>
         </section>
       </main>
+
+      {/* Modal de QR Code */}
+      <Dialog open={isQRCodeOpen} onOpenChange={setIsQRCodeOpen}>
+        <DialogContent className="max-w-[90vw] rounded-[2rem] p-6 overflow-hidden">
+          <DialogHeader className="text-center">
+            <DialogTitle className="font-headline text-2xl font-black">Pagamento PIX</DialogTitle>
+            <DialogDescription className="text-sm">
+              Escaneie o código para liquidar o saldo da semana.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col items-center justify-center py-6">
+            <div className="p-4 bg-white rounded-[2rem] shadow-inner border-2 border-dashed border-muted relative group">
+              <Image 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=LucasExpresso-Pagamento-${totalDebt}`}
+                alt="QR Code PIX"
+                width={200}
+                height={200}
+                className="rounded-xl"
+              />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/80 transition-opacity rounded-xl">
+                <QrCode className="size-12 text-primary" />
+              </div>
+            </div>
+            
+            <div className="mt-6 text-center">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Valor Total a Pagar</p>
+              <h3 className="text-3xl font-black text-primary font-headline">
+                {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </h3>
+            </div>
+          </div>
+
+          <div className="mt-2 space-y-3">
+            <Button 
+              className="w-full h-16 rounded-2xl font-black text-base shadow-xl shadow-primary/20 active:scale-95 transition-all"
+              onClick={handlePayDeliveries}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="animate-spin mr-2" />
+                  DANDO BAIXA...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="mr-2 size-5" />
+                  JÁ REALIZEI O PAGAMENTO
+                </>
+              )}
+            </Button>
+            <Button variant="ghost" className="w-full text-muted-foreground font-bold" onClick={() => setIsQRCodeOpen(false)} disabled={isProcessing}>
+              Cancelar
+            </Button>
+          </div>
+          
+          <div className="mt-4 p-3 bg-muted/30 rounded-xl flex gap-3 items-start">
+            <Info className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-[10px] text-muted-foreground leading-tight italic">
+              Após o pagamento ser identificado em nossa conta, você pode clicar no botão acima para liberar seu acesso instantaneamente.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
