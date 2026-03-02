@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Wallet, CheckCircle2, AlertCircle, Loader2, Info, Banknote, ChevronRight, AlertTriangle, Calendar, Ban, Smartphone, QrCode } from 'lucide-react';
+import { ArrowLeft, CreditCard, Wallet, CheckCircle2, AlertCircle, Loader2, Info, Banknote, ChevronRight, AlertTriangle, Calendar, Ban, Smartphone, QrCode, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, doc, writeBatch, serverTimestamp, orderBy, limit } from 'firebase/firestore';
 import type { Delivery } from '@/lib/types';
-import { format, startOfWeek, isBefore } from 'date-fns';
+import { format, startOfWeek, isBefore, getDay, subDays, addDays, subWeeks, addWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { cn, checkClientBlockStatus } from '@/lib/utils';
@@ -29,47 +29,79 @@ export default function ClientFinancePage() {
   const { toast } = useToast();
   const [isProcessing, setIsUpdating] = useState(false);
   const [isQRCodeOpen, setIsQRCodeOpen] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-  // Busca todas as entregas concluídas da loja
-  const deliveriesQuery = useMemo(() => {
+  // Cálculo do Ciclo Semanal (Seg-Sáb)
+  const { weekStart, weekEnd, periodLabel } = useMemo(() => {
+    const reference = new Date(currentDate);
+    const day = getDay(reference);
+    // Se for domingo (0), volta para sábado para calcular a semana correta do ciclo
+    const dateForCalc = day === 0 ? subDays(reference, 1) : reference;
+    const start = startOfWeek(dateForCalc, { weekStartsOn: 1 });
+    start.setHours(0, 0, 0, 0);
+    
+    const end = addDays(start, 5); // Vai até Sábado
+    end.setHours(23, 59, 59, 999);
+    
+    return { 
+      weekStart: start, 
+      weekEnd: end, 
+      periodLabel: `${format(start, 'dd/MM')} - ${format(end, 'dd/MM')}` 
+    };
+  }, [currentDate]);
+
+  const handlePrevWeek = () => setCurrentDate(prev => subWeeks(prev, 1));
+  const handleNextWeek = () => setCurrentDate(prev => addWeeks(prev, 1));
+
+  // 1. Busca TODAS as entregas não pagas para o cálculo de bloqueio (Independente da semana selecionada)
+  const allUnpaidQuery = useMemo(() => {
     if (!firestore || !user?.uid) return null;
     return query(
       collection(firestore, 'deliveries'),
       where('clientId', '==', user.uid),
       where('status', '==', 'finished'),
-      orderBy('createdAt', 'desc'),
-      limit(50)
+      where('paidByClient', '==', false)
     );
   }, [firestore, user?.uid]);
 
-  const { data: deliveries, loading: loadingDeliveries } = useCollection<Delivery>(deliveriesQuery);
+  const { data: allUnpaidDeliveries } = useCollection<Delivery>(allUnpaidQuery);
 
-  const unpaidDeliveries = useMemo(() => {
-    return deliveries?.filter(d => !d.paidByClient) || [];
-  }, [deliveries]);
+  // 2. Busca as entregas da SEMANA SELECIONADA para exibição na lista
+  const weeklyDeliveriesQuery = useMemo(() => {
+    if (!firestore || !user?.uid) return null;
+    return query(
+      collection(firestore, 'deliveries'),
+      where('clientId', '==', user.uid),
+      where('status', '==', 'finished'),
+      where('createdAt', '>=', weekStart),
+      where('createdAt', '<=', weekEnd),
+      orderBy('createdAt', 'desc'),
+      limit(100)
+    );
+  }, [firestore, user?.uid, weekStart, weekEnd]);
 
-  const blockStatus = useMemo(() => checkClientBlockStatus(unpaidDeliveries), [unpaidDeliveries]);
+  const { data: weeklyDeliveries, loading: loadingDeliveries } = useCollection<Delivery>(weeklyDeliveriesQuery);
 
-  const { currentWeekAmount, previousWeeksAmount } = useMemo(() => {
-    const now = new Date();
-    const currentMonday = startOfWeek(now, { weekStartsOn: 1 });
-    currentMonday.setHours(0, 0, 0, 0);
+  const blockStatus = useMemo(() => checkClientBlockStatus(allUnpaidDeliveries || []), [allUnpaidDeliveries]);
 
-    return unpaidDeliveries.reduce((acc, d) => {
-        const deliveryDate = d.createdAt.toDate();
-        if (isBefore(deliveryDate, currentMonday)) {
-            acc.previousWeeksAmount += d.price;
-        } else {
-            acc.currentWeekAmount += d.price;
-        }
+  // Cálculos baseados na semana selecionada para o resumo visual
+  const stats = useMemo(() => {
+    if (!weeklyDeliveries) return { totalWeek: 0, paidWeek: 0, unpaidWeek: 0 };
+    return weeklyDeliveries.reduce((acc, d) => {
+        acc.totalWeek += d.price;
+        if (d.paidByClient) acc.paidWeek += d.price;
+        else acc.unpaidWeek += d.price;
         return acc;
-    }, { currentWeekAmount: 0, previousWeeksAmount: 0 });
-  }, [unpaidDeliveries]);
+    }, { totalWeek: 0, paidWeek: 0, unpaidWeek: 0 });
+  }, [weeklyDeliveries]);
 
-  const totalDebt = currentWeekAmount + previousWeeksAmount;
+  // Débito total para o QR Code (Soma de tudo que deve, não só da semana)
+  const totalDebt = useMemo(() => {
+    return allUnpaidDeliveries?.reduce((sum, d) => sum + (d.price || 0), 0) || 0;
+  }, [allUnpaidDeliveries]);
 
   const handlePayDeliveries = async () => {
-    if (!firestore || unpaidDeliveries.length === 0) return;
+    if (!firestore || !allUnpaidDeliveries || allUnpaidDeliveries.length === 0) return;
     
     setIsUpdating(true);
     
@@ -77,7 +109,7 @@ export default function ClientFinancePage() {
     setTimeout(async () => {
         const batch = writeBatch(firestore);
         
-        unpaidDeliveries.forEach(delivery => {
+        allUnpaidDeliveries.forEach(delivery => {
             const dRef = doc(firestore, 'deliveries', delivery.id);
             batch.update(dRef, { paidByClient: true });
         });
@@ -85,7 +117,7 @@ export default function ClientFinancePage() {
         // Notifica o Admin
         const notifRef = doc(collection(firestore, 'notifications'));
         batch.set(notifRef, {
-            userId: 'admin', // Idealmente buscaria os IDs dos admins reais
+            userId: 'admin', 
             title: 'Pagamento Recebido!',
             description: `${userProfile?.displayName} realizou o pagamento via PIX de R$ ${totalDebt.toFixed(2)}.`,
             createdAt: serverTimestamp(),
@@ -123,7 +155,7 @@ export default function ClientFinancePage() {
 
       <main className="flex-1 p-4 overflow-y-auto pb-32">
         
-        {/* Resumo de Dívida */}
+        {/* Resumo de Dívida Global */}
         <section className="mb-6">
             <Card className={cn(
                 "p-6 border-none shadow-xl transition-all relative overflow-hidden",
@@ -134,10 +166,10 @@ export default function ClientFinancePage() {
                         {blockStatus.isBlocked ? <Ban className="size-6" /> : (totalDebt > 0 ? <AlertCircle className="size-6" /> : <CheckCircle2 className="size-6" />)}
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-1 rounded">
-                        {blockStatus.isBlocked ? "ACESSO BLOQUEADO" : "STATUS ATUAL"}
+                        {blockStatus.isBlocked ? "ACESSO BLOQUEADO" : "SALDO TOTAL"}
                     </span>
                 </div>
-                <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Saldo Total Devedor</p>
+                <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Saldo Devedor Acumulado</p>
                 {isLoading ? <Skeleton className="h-10 w-32 bg-white/20 mt-1" /> : (
                     <h2 className="text-4xl font-black mt-1">
                         {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -146,32 +178,44 @@ export default function ClientFinancePage() {
                 
                 {blockStatus.isBlocked && (
                     <div className="mt-4 p-3 bg-black/10 rounded-xl">
-                        <p className="text-[10px] font-bold leading-tight">O prazo de pagamento da semana anterior venceu na quarta-feira. Realize o acerto agora para desbloquear sua conta.</p>
+                        <p className="text-[10px] font-bold leading-tight">Você possui débitos de semanas anteriores. Regularize agora para desbloquear seu acesso.</p>
                     </div>
                 )}
             </Card>
         </section>
 
-        {/* Detalhamento por Ciclo */}
-        {totalDebt > 0 && (
-            <section className="mb-8 grid grid-cols-2 gap-3">
-                <Card className="p-4 bg-muted/50 border-none shadow-sm">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Semana Atual</p>
-                    <p className="text-lg font-black text-foreground">{currentWeekAmount.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
-                    <p className="text-[9px] text-muted-foreground mt-1">Vence na próxima quarta</p>
-                </Card>
-                <Card className={cn("p-4 border-none shadow-sm", previousWeeksAmount > 0 ? "bg-destructive/10" : "bg-muted/50")}>
-                    <p className={cn("text-[10px] font-bold uppercase tracking-widest leading-none mb-1", previousWeeksAmount > 0 ? "text-destructive" : "text-muted-foreground")}>Semana Anterior</p>
-                    <p className={cn("text-lg font-black", previousWeeksAmount > 0 ? "text-destructive" : "text-foreground")}>{previousWeeksAmount.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
-                    <p className="text-[9px] text-muted-foreground mt-1">Vencido {blockStatus.isGracePeriod ? "(Em prazo de graça)" : ""}</p>
-                </Card>
-            </section>
-        )}
+        {/* Filtro de Semana */}
+        <section className="mb-6">
+            <Card className="p-2 bg-muted/50 border shadow-sm rounded-2xl flex items-center justify-between">
+                <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="rounded-xl h-12 w-12">
+                    <ChevronLeft className="size-6" />
+                </Button>
+                <div className="text-center">
+                    <p className="text-sm font-bold">{periodLabel}</p>
+                    <p className="text-[10px] uppercase font-black text-primary tracking-widest leading-none mt-0.5">Ciclo Seg-Sáb</p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={handleNextWeek} className="rounded-xl h-12 w-12">
+                    <ChevronRight className="size-6" />
+                </Button>
+            </Card>
+        </section>
 
-        {/* Métodos de Pagamento */}
+        {/* Detalhamento da Semana Selecionada */}
+        <section className="mb-8 grid grid-cols-2 gap-3">
+            <Card className="p-4 bg-muted/50 border-none shadow-sm">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Total Período</p>
+                <p className="text-lg font-black text-foreground">{stats.totalWeek.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+            </Card>
+            <Card className={cn("p-4 border-none shadow-sm", stats.unpaidWeek > 0 ? "bg-primary/5 border border-primary/10" : "bg-emerald-50")}>
+                <p className="text-[10px] font-bold uppercase tracking-widest leading-none mb-1 text-primary">Pendente Período</p>
+                <p className="text-lg font-black text-primary">{stats.unpaidWeek.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+            </Card>
+        </section>
+
+        {/* Métodos de Pagamento (Sempre mostra se houver dívida global) */}
         {totalDebt > 0 && (
             <section className="mb-8 space-y-4">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Pagar com PIX</h3>
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Pagar Total Acumulado</h3>
                 <Card className="p-4 border-primary/20 bg-primary/5 cursor-pointer active:scale-[0.98] transition-all" onClick={() => setIsQRCodeOpen(true)}>
                     <div className="flex items-center gap-4">
                         <div className="size-12 rounded-xl bg-[#32BCAD] flex items-center justify-center shadow-lg">
@@ -179,7 +223,7 @@ export default function ClientFinancePage() {
                         </div>
                         <div className="flex-1">
                             <p className="font-bold text-sm">Gerar QR Code PIX</p>
-                            <p className="text-xs text-muted-foreground">Pagar saldo de {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                            <p className="text-xs text-muted-foreground">Pagar saldo total de {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                         </div>
                         <ChevronRight className="text-primary/40" />
                     </div>
@@ -187,31 +231,34 @@ export default function ClientFinancePage() {
                 <div className="flex gap-2 p-3 bg-muted/50 rounded-xl border border-dashed">
                     <Info className="size-4 text-muted-foreground shrink-0 mt-0.5" />
                     <p className="text-[10px] text-muted-foreground leading-tight italic">
-                        O ciclo de pagamentos funciona de Segunda a Sábado. O vencimento da semana fechada ocorre toda Quarta-Feira subsequente.
+                        O vencimento da semana fechada ocorre toda Quarta-Feira subsequente. Pagamentos via PIX dão baixa imediata após a confirmação.
                     </p>
                 </div>
             </section>
         )}
 
-        {/* Histórico Recente */}
+        {/* Listagem do Período */}
         <section className="space-y-4">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Últimos Lançamentos</h3>
+            <div className="flex justify-between items-center px-1">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Lançamentos do Período</h3>
+                <span className="text-[10px] font-bold text-muted-foreground">{weeklyDeliveries?.length || 0} entregas</span>
+            </div>
             <div className="space-y-3">
                 {isLoading ? (
                     <>
                         <Skeleton className="h-20 w-full rounded-xl" />
                         <Skeleton className="h-20 w-full rounded-xl" />
                     </>
-                ) : deliveries && deliveries.length > 0 ? (
-                    deliveries.map(delivery => {
-                        const isPrevious = isBefore(delivery.createdAt.toDate(), startOfWeek(new Date(), {weekStartsOn: 1}));
+                ) : weeklyDeliveries && weeklyDeliveries.length > 0 ? (
+                    weeklyDeliveries.map(delivery => {
+                        const isPrevCycle = isBefore(delivery.createdAt.toDate(), startOfWeek(new Date(), {weekStartsOn: 1}));
                         return (
-                            <Card key={delivery.id} className="p-4 rounded-xl border-l-4 overflow-hidden" style={{ borderLeftColor: delivery.paidByClient ? '#10b981' : (isPrevious ? '#ef4444' : '#f59e0b') }}>
+                            <Card key={delivery.id} className="p-4 rounded-xl border-l-4 overflow-hidden shadow-sm" style={{ borderLeftColor: delivery.paidByClient ? '#10b981' : (isPrevCycle ? '#ef4444' : '#f59e0b') }}>
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <p className="text-xs font-bold text-muted-foreground uppercase">{format(delivery.createdAt.toDate(), 'dd/MM/yyyy', {locale: ptBR})}</p>
-                                            {isPrevious && !delivery.paidByClient && (
+                                            <p className="text-xs font-bold text-muted-foreground uppercase">{format(delivery.createdAt.toDate(), 'dd/MM HH:mm', {locale: ptBR})}</p>
+                                            {!delivery.paidByClient && isPrevCycle && (
                                                 <span className="text-[8px] font-black bg-destructive/10 text-destructive px-1 rounded uppercase">Vencido</span>
                                             )}
                                         </div>
@@ -221,9 +268,9 @@ export default function ClientFinancePage() {
                                         <p className="font-black text-base">{delivery.price.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
                                         <span className={cn(
                                             "text-[9px] font-black uppercase px-1.5 py-0.5 rounded",
-                                            delivery.paidByClient ? "bg-emerald-100 text-emerald-700" : (isPrevious ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700")
+                                            delivery.paidByClient ? "bg-emerald-100 text-emerald-700" : (isPrevCycle ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700")
                                         )}>
-                                            {delivery.paidByClient ? 'Pago' : 'Pendente'}
+                                            {delivery.paidByClient ? 'Liquidado' : 'Em Aberto'}
                                         </span>
                                     </div>
                                 </div>
@@ -231,9 +278,9 @@ export default function ClientFinancePage() {
                         )
                     })
                 ) : (
-                    <div className="text-center py-10 border-2 border-dashed rounded-3xl">
+                    <div className="text-center py-16 border-2 border-dashed rounded-3xl bg-muted/10">
                         <Banknote className="size-10 text-muted-foreground/20 mx-auto mb-2" />
-                        <p className="text-sm font-medium text-muted-foreground">Nenhuma entrega concluída ainda.</p>
+                        <p className="text-sm font-medium text-muted-foreground">Nenhuma entrega neste período.</p>
                     </div>
                 )}
             </div>
@@ -246,7 +293,7 @@ export default function ClientFinancePage() {
           <DialogHeader className="text-center">
             <DialogTitle className="font-headline text-2xl font-black">Pagamento PIX</DialogTitle>
             <DialogDescription className="text-sm">
-              Escaneie o código para liquidar o saldo da semana.
+              Escaneie o código para liquidar o saldo total.
             </DialogDescription>
           </DialogHeader>
           
@@ -298,7 +345,7 @@ export default function ClientFinancePage() {
           <div className="mt-4 p-3 bg-muted/30 rounded-xl flex gap-3 items-start">
             <Info className="size-4 text-muted-foreground shrink-0 mt-0.5" />
             <p className="text-[10px] text-muted-foreground leading-tight italic">
-              Após o pagamento ser identificado em nossa conta, você pode clicar no botão acima para liberar seu acesso instantaneamente.
+              Ao clicar em confirmar, o sistema dará baixa em todas as suas entregas pendentes.
             </p>
           </div>
         </DialogContent>
