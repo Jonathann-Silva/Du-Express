@@ -414,11 +414,15 @@ export default function RequestDeliveryPage() {
                     <Input 
                       id="dropoff_street" 
                       name="dropoff_street" 
-                      placeholder="Rua Principal, 123" 
+                      placeholder="Rua Principal" 
                       className="pl-10 h-12 rounded-xl bg-background" 
                       required 
                       value={dropoffStreet}
-                      onChange={(e) => setDropoffStreet(e.target.value)}
+                      onChange={(e) => {
+                        // Aceita apenas letras e espaços (inclui acentos latinos), removendo números e símbolos
+                        const filteredValue = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s]/g, "");
+                        setDropoffStreet(filteredValue);
+                      }}
                     />
                   </div>
                 </div>
