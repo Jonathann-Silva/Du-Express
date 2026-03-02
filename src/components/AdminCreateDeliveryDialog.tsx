@@ -12,7 +12,9 @@ import {
   Loader2, 
   Plus, 
   X,
-  User
+  User,
+  CreditCard,
+  Banknote
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, addDoc, serverTimestamp, doc } from 'firebase/firestore';
@@ -28,8 +30,9 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, PaymentMethod } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { DialogTitle } from '@/components/ui/dialog';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -51,6 +54,7 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
   const [dropoff, setDropoff] = useState('');
   const [price, setPrice] = useState<string>('');
   const [observations, setObservations] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit');
 
   // Busca Clientes e Entregadores
   const clientsQuery = useMemo(() => {
@@ -101,7 +105,8 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
       status: isAssigned ? 'accepted' : 'pending',
       createdAt: serverTimestamp(),
       paid: false,
-      paidByClient: false
+      paidByClient: false,
+      paymentMethod: paymentMethod
     };
 
     const deliveriesRef = collection(firestore, 'deliveries');
@@ -184,6 +189,29 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Forma de Pagamento */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
+              Forma de Pagamento
+            </Label>
+            <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="grid grid-cols-2 gap-3">
+                <Label htmlFor="admin-pay-credit" className={cn(
+                    "flex items-center gap-2 p-3 rounded-xl border transition-all cursor-pointer text-xs",
+                    paymentMethod === 'credit' ? "border-primary bg-primary/5 font-bold" : "border-border bg-muted/30"
+                )}>
+                    <RadioGroupItem value="credit" id="admin-pay-credit" className="sr-only" />
+                    <CreditCard className="size-3.5" /> Crediário
+                </Label>
+                <Label htmlFor="admin-pay-collect" className={cn(
+                    "flex items-center gap-2 p-3 rounded-xl border transition-all cursor-pointer text-xs",
+                    paymentMethod === 'collect' ? "border-primary bg-primary/5 font-bold" : "border-border bg-muted/30"
+                )}>
+                    <RadioGroupItem value="collect" id="admin-pay-collect" className="sr-only" />
+                    <Banknote className="size-3.5" /> Receber
+                </Label>
+            </RadioGroup>
           </div>
 
           {/* Endereços */}

@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Bike, Wallet, CheckCircle, CircleDot, Loader2, Map, MapPin, ShieldCheck } from 'lucide-react';
+import { Bike, Wallet, CheckCircle, CircleDot, Loader2, Map, MapPin, ShieldCheck, Banknote, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { collection, query, where, doc, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { startOfDay } from 'date-fns';
@@ -257,6 +257,8 @@ export default function CourierDashboard() {
 
 function TaskCard({ task, onAction, isUpdating, courierRate }: { task: Delivery, onAction: () => void, isUpdating: boolean, courierRate: number }) {
   const isAccepted = task.status === 'accepted';
+  const isCollect = task.paymentMethod === 'collect';
+
   return (
     <Card className="p-4 rounded-xl shadow-sm border-l-4 border-l-primary overflow-hidden">
       <div className="flex justify-between items-start mb-4">
@@ -265,6 +267,16 @@ function TaskCard({ task, onAction, isUpdating, courierRate }: { task: Delivery,
         </Badge>
         <p className="text-lg font-bold text-primary">{courierRate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
       </div>
+
+      {isCollect && (
+        <div className="mb-4 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 flex items-center gap-2">
+            <Banknote className="size-4 text-amber-600" />
+            <p className="text-[10px] font-black text-amber-700 uppercase tracking-tighter">
+                COBRAR CLIENTE: RECEBER EM DINHEIRO OU PIX
+            </p>
+        </div>
+      )}
+
       <div className="space-y-3 mb-4">
         <div className="flex gap-2 items-start">
           <CircleDot className="size-4 text-primary mt-1 shrink-0" />

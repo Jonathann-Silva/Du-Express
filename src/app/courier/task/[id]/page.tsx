@@ -1,7 +1,7 @@
 
 'use client';
 
-import { ArrowLeft, Store, MapPin, Info, Loader2, Package, Map as MapIcon } from 'lucide-react';
+import { ArrowLeft, Store, MapPin, Info, Loader2, Package, Map as MapIcon, Banknote, CreditCard } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
@@ -180,6 +180,7 @@ export default function TaskDetailsPage() {
   }
 
   const courierRate = userProfile?.deliveryRate || 6;
+  const isCollect = delivery.paymentMethod === 'collect';
 
   return (
     <>
@@ -194,6 +195,20 @@ export default function TaskDetailsPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 pb-48">
+        
+        {isCollect && (
+            <div className="mt-4 p-4 bg-amber-500 rounded-2xl text-white shadow-lg shadow-amber-500/20 flex items-center gap-4">
+                <div className="size-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                    <Banknote className="size-7" />
+                </div>
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest leading-none opacity-80">Atenção Entregador</p>
+                    <h4 className="text-base font-bold mt-1">RECEBER DINHEIRO/PIX</h4>
+                    <p className="text-[10px] mt-0.5 opacity-90">Este cliente não usa crediário. Você deve cobrar no destino.</p>
+                </div>
+            </div>
+        )}
+
         <div className="mt-4 relative group">
           <div className="w-full bg-muted aspect-[16/9] rounded-xl overflow-hidden relative">
             {(loading || isGeocoding) && (

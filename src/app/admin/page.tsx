@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { CircleDot, MapPin, Package, Bike, Wallet, Truck, CheckCircle, XCircle, Loader2, Banknote, ChevronRight } from 'lucide-react';
+import { CircleDot, MapPin, Package, Bike, Wallet, Truck, CheckCircle, XCircle, Loader2, Banknote, ChevronRight, CreditCard } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -285,6 +285,13 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <h4 className="font-bold text-sm leading-tight"><ClientName clientId={req.clientId} /></h4>
+                        <div className="flex items-center gap-1.5 mt-1">
+                            {req.paymentMethod === 'collect' ? (
+                                <Badge className="bg-amber-500 text-white text-[8px] uppercase px-1.5 h-4">Receber</Badge>
+                            ) : (
+                                <Badge variant="outline" className="text-[8px] uppercase px-1.5 h-4 text-muted-foreground">Crediário</Badge>
+                            )}
+                        </div>
                       </div>
                     </div>
                     <Badge variant="secondary" className="text-[10px]">

@@ -1,6 +1,7 @@
+
 'use client';
 
-import { ArrowLeft, User, Wallet, Map, ArrowRight, Loader2, CircleDot, Building, MapPin, AlertCircle, Ban } from "lucide-react";
+import { ArrowLeft, User, Wallet, Map, ArrowRight, Loader2, CircleDot, Building, MapPin, AlertCircle, Ban, CreditCard, Banknote } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +18,7 @@ import { FirestorePermissionError } from "@/firebase/errors";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn, checkClientBlockStatus } from "@/lib/utils";
-import type { Delivery } from "@/lib/types";
+import type { Delivery, PaymentMethod } from "@/lib/types";
 
 
 export default function RequestDeliveryPage() {
@@ -27,6 +28,7 @@ export default function RequestDeliveryPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit');
 
   // Busca faturas para verificar bloqueio
   const deliveriesQuery = useMemo(() => {
@@ -133,7 +135,8 @@ export default function RequestDeliveryPage() {
       clientId: user.uid,
       createdAt: serverTimestamp(),
       observations: observations,
-      paidByClient: false
+      paidByClient: false,
+      paymentMethod: paymentMethod
     };
 
     const deliveriesCollectionRef = collection(firestore, "deliveries");
@@ -230,7 +233,7 @@ export default function RequestDeliveryPage() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b px-4 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b px-4 py-4 border-b flex items-center justify-between">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/client">
             <ArrowLeft />
@@ -275,6 +278,38 @@ export default function RequestDeliveryPage() {
                     )}
                 </RadioGroup>
             )}
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest px-1 font-headline">Opção de Pagamento</h2>
+            <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="grid grid-cols-1 gap-3">
+                <div>
+                    <RadioGroupItem value="credit" id="pay-credit" className="sr-only" />
+                    <Label htmlFor="pay-credit" className={cn(
+                        "flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        paymentMethod === 'credit' ? "border-primary bg-primary/5" : "border-transparent bg-muted/60 hover:bg-muted"
+                    )}>
+                        <span className="font-bold flex items-center gap-2">
+                            <CreditCard className="size-4 text-primary" />
+                            Crediário
+                        </span>
+                        <span className="text-xs text-muted-foreground mt-1">Cobrança semanal automática no aplicativo.</span>
+                    </Label>
+                </div>
+                <div>
+                    <RadioGroupItem value="collect" id="pay-collect" className="sr-only" />
+                    <Label htmlFor="pay-collect" className={cn(
+                        "flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        paymentMethod === 'collect' ? "border-primary bg-primary/5" : "border-transparent bg-muted/60 hover:bg-muted"
+                    )}>
+                        <span className="font-bold flex items-center gap-2">
+                            <Banknote className="size-4 text-primary" />
+                            Receber - Dinheiro ou Pix
+                        </span>
+                        <span className="text-xs text-muted-foreground mt-1">O entregador deve cobrar o valor na entrega.</span>
+                    </Label>
+                </div>
+            </RadioGroup>
           </section>
           
           <section className="space-y-4">

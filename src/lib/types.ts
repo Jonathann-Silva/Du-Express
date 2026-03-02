@@ -2,6 +2,7 @@
 import { Timestamp } from "firebase/firestore";
 
 export type DeliveryStatus = 'pending' | 'accepted' | 'in-progress' | 'finished' | 'refused';
+export type PaymentMethod = 'credit' | 'collect';
 
 export type Delivery = {
   id: string;
@@ -16,6 +17,7 @@ export type Delivery = {
   observations?: string;
   paid?: boolean; // Pago para o motoboy
   paidByClient?: boolean; // Pago pela loja ao admin
+  paymentMethod: PaymentMethod;
 };
 
 export type AdminDeliveryStatus = 'pending' | 'accepted' | 'in-progress' | 'finished' | 'refused';
