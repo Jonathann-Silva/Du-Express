@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn, checkClientBlockStatus } from "@/lib/utils";
 import type { Delivery, PaymentMethod } from "@/lib/types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 
 export default function RequestDeliveryPage() {
@@ -317,9 +318,12 @@ export default function RequestDeliveryPage() {
           </Link>
         </Button>
         <h1 className="text-lg font-semibold tracking-tight font-headline">Nova Entrega</h1>
-        <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
-          <User className="text-primary size-4" />
-        </div>
+        <Avatar className="size-8 border border-primary/30">
+          {userProfile?.photoURL && <AvatarImage src={userProfile.photoURL} alt={userProfile.displayName || 'Client'} />}
+          <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
+            {userProfile?.displayName?.charAt(0) || 'C'}
+          </AvatarFallback>
+        </Avatar>
       </header>
 
       <main className="flex-1 overflow-y-auto pb-32">
