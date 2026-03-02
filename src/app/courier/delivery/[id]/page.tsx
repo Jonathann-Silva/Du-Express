@@ -1,9 +1,10 @@
 
 'use client';
 
-import { ArrowLeft, Phone, MessageCircle, Info, CheckCircle, MapPin, Loader2, Package, Map as MapIcon, Banknote, Smartphone } from 'lucide-react';
+import { ArrowLeft, Phone, MessageCircle, Info, CheckCircle, MapPin, Loader2, Package, Map as MapIcon, Banknote, Smartphone, RefreshCw } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
@@ -41,8 +42,10 @@ export default function ActiveDeliveryPage() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<Coords | null>(null);
   
-  // Estado para o modal de pagamento
+  // Estados para o modal de pagamento Pix
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [pixStep, setPixStep] = useState<'choice' | 'qrcode' | 'confirmed'>('choice');
+  const [isCheckingPix, setIsCheckingPix] = useState(false);
 
   const deliveryRef = useMemo(() => (
     firestore && deliveryId ? doc(firestore, 'deliveries', deliveryId) : null
@@ -189,6 +192,15 @@ export default function ActiveDeliveryPage() {
         variant: "destructive"
       });
     }
+  };
+
+  const simulatePixConfirmation = () => {
+    setIsCheckingPix(true);
+    setTimeout(() => {
+      setIsCheckingPix(false);
+      setPixStep('confirmed');
+      toast({ title: "Pix Confirmado!", description: "Recebemos a notificação de pagamento." });
+    }, 3000);
   };
 
   const isLoading = loadingDelivery || loadingClient;
@@ -350,36 +362,107 @@ export default function ActiveDeliveryPage() {
         </div>
 
         {/* Modal de confirmação de pagamento do cliente */}
-        <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
+            setIsPaymentDialogOpen(open);
+            if (!open) {
+                setPixStep('choice');
+                setIsCheckingPix(false);
+            }
+        }}>
           <DialogContent className="max-w-[90vw] rounded-3xl p-6">
             <DialogHeader>
-              <DialogTitle className="font-headline text-2xl font-black text-center">Como o cliente pagou?</DialogTitle>
+              <DialogTitle className="font-headline text-2xl font-black text-center">
+                  {pixStep === 'choice' ? 'Forma de Pagamento' : 'Pagamento via Pix'}
+              </DialogTitle>
               <DialogDescription className="text-center">
-                O pedido foi marcado para recebimento manual. Confirme a forma de pagamento.
+                {pixStep === 'choice' 
+                    ? 'O pedido foi marcado para recebimento manual. Como o cliente pagou?' 
+                    : 'Peça ao cliente para escanear o código abaixo.'}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-4 py-6">
-              <Button 
-                variant="outline" 
-                className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-emerald-500 hover:bg-emerald-50 transition-all"
-                onClick={() => handleConfirmDelivery('cash')}
-              >
-                <div className="size-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
-                  <Banknote size={28} />
+
+            {pixStep === 'choice' && (
+                <div className="grid grid-cols-2 gap-4 py-6">
+                <Button 
+                    variant="outline" 
+                    className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-emerald-500 hover:bg-emerald-50 transition-all"
+                    onClick={() => handleConfirmDelivery('cash')}
+                >
+                    <div className="size-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
+                    <Banknote size={28} />
+                    </div>
+                    <span className="font-bold">Dinheiro</span>
+                </Button>
+                <Button 
+                    variant="outline" 
+                    className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-[#32BCAD] hover:bg-[#32BCAD]/5 transition-all"
+                    onClick={() => setPixStep('qrcode')}
+                >
+                    <div className="size-12 rounded-xl bg-[#32BCAD] text-white flex items-center justify-center">
+                    <Smartphone size={28} />
+                    </div>
+                    <span className="font-bold">Pix</span>
+                </Button>
                 </div>
-                <span className="font-bold">Dinheiro</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-[#32BCAD] hover:bg-[#32BCAD]/5 transition-all"
-                onClick={() => handleConfirmDelivery('pix')}
-              >
-                <div className="size-12 rounded-xl bg-[#32BCAD] text-white flex items-center justify-center">
-                  <Smartphone size={28} />
+            )}
+
+            {pixStep === 'qrcode' && (
+                <div className="flex flex-col items-center py-6">
+                    <div className="p-4 bg-white rounded-2xl shadow-inner border relative overflow-hidden">
+                        <Image 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=LucasExpresso-Pedido-${delivery?.id}`}
+                            alt="QR Code Pix"
+                            width={200}
+                            height={200}
+                            className="rounded-lg"
+                        />
+                        {isCheckingPix && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+                                <Loader2 className="size-10 text-[#32BCAD] animate-spin" />
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="mt-6 text-center w-full">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Valor a Cobrar</p>
+                        <h3 className="text-3xl font-black text-[#32BCAD] font-headline">
+                            {delivery?.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </h3>
+                        
+                        <div className="mt-8 space-y-3">
+                            <Button 
+                                className="w-full h-14 rounded-2xl bg-[#32BCAD] hover:bg-[#2aa395] font-bold gap-2 shadow-lg shadow-[#32BCAD]/20"
+                                onClick={simulatePixConfirmation}
+                                disabled={isCheckingPix}
+                            >
+                                {isCheckingPix ? <Loader2 className="animate-spin size-5" /> : <RefreshCw className="size-5" />}
+                                {isCheckingPix ? 'Verificando Notificação...' : 'Verificar Recebimento'}
+                            </Button>
+                            <p className="text-[10px] text-muted-foreground italic leading-tight">
+                                A entrega será liberada automaticamente após a confirmação do Mercado Pago.
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <span className="font-bold">Pix</span>
-              </Button>
-            </div>
+            )}
+
+            {pixStep === 'confirmed' && (
+                <div className="flex flex-col items-center py-10 text-center animate-in zoom-in-95">
+                    <div className="size-20 rounded-full bg-emerald-500 flex items-center justify-center text-white mb-6">
+                        <CheckCircle size={48} />
+                    </div>
+                    <h3 className="text-2xl font-black font-headline text-emerald-600">Pagamento Confirmado!</h3>
+                    <p className="text-sm text-muted-foreground mt-2">O Pix foi identificado com sucesso.</p>
+                    
+                    <Button 
+                        className="w-full mt-8 h-14 rounded-2xl font-black text-base"
+                        onClick={() => handleConfirmDelivery('pix')}
+                    >
+                        CONCLUIR ENTREGA
+                    </Button>
+                </div>
+            )}
+
             <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setIsPaymentDialogOpen(false)}>Cancelar</Button>
           </DialogContent>
         </Dialog>

@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, Store, MapPin, Loader2, Navigation as NavIcon, Package } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, Store, MapPin, Loader2, Navigation as NavIcon, Package, Banknote, Smartphone, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, orderBy, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import type { Delivery, UserProfile } from '@/lib/types';
@@ -15,6 +17,13 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ClientName } from '@/components/info/ClientName';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const DeliveryMap = dynamic(() => import('@/components/DeliveryMap'), { 
   ssr: false,
@@ -39,6 +48,12 @@ export default function MultiDeliveryNavigation() {
     const [stops, setStops] = useState<OptimizedStop[]>([]);
     const [isGeocoding, setIsGeocoding] = useState(true);
     const [isExpanded, setIsExpanded] = useState(true);
+
+    // Estados para o modal de pagamento Pix
+    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [taskToFinish, setTaskToFinish] = useState<Delivery | null>(null);
+    const [pixStep, setPixStep] = useState<'choice' | 'qrcode' | 'confirmed'>('choice');
+    const [isCheckingPix, setIsCheckingPix] = useState(false);
 
     const activeTasksQuery = useMemo(() => {
         if (!firestore || !user) return null;
@@ -88,22 +103,37 @@ export default function MultiDeliveryNavigation() {
     }, [deliveries]);
 
     const handleAction = async (stop: OptimizedStop) => {
-        if (!firestore) return;
-        setIsUpdating(stop.deliveryId);
+        const delivery = deliveries?.find(d => d.id === stop.deliveryId);
+        if (!delivery) return;
 
-        const deliveryRef = doc(firestore, 'deliveries', stop.deliveryId);
+        // Se for uma entrega (dropoff) e o pagamento for 'collect', abre o modal de pagamento
+        if (stop.type === 'dropoff' && delivery.paymentMethod === 'collect') {
+            setTaskToFinish(delivery);
+            setPixStep('choice');
+            setIsPaymentDialogOpen(true);
+            return;
+        }
+
+        performStatusUpdate(delivery, stop.type === 'pickup' ? 'in-progress' : 'finished');
+    };
+
+    const performStatusUpdate = async (delivery: Delivery, nextStatus: Delivery['status'], finalMethod?: 'pix' | 'cash') => {
+        if (!firestore) return;
+        setIsUpdating(delivery.id);
+
+        const deliveryRef = doc(firestore, 'deliveries', delivery.id);
         const batch = writeBatch(firestore);
-        const nextStatus = stop.type === 'pickup' ? 'in-progress' : 'finished';
 
         const updateData: any = { status: nextStatus };
         if (nextStatus === 'finished') {
             updateData.finishedAt = serverTimestamp();
+            if (finalMethod) updateData.paymentMethod = finalMethod;
         }
         batch.update(deliveryRef, updateData);
 
         const clientNotifRef = doc(collection(firestore, 'notifications'));
         batch.set(clientNotifRef, {
-            userId: deliveries?.find(d => d.id === stop.deliveryId)?.clientId,
+            userId: delivery.clientId,
             title: nextStatus === 'in-progress' ? 'Seu pedido está em trânsito!' : 'Entrega concluída!',
             description: nextStatus === 'in-progress' ? 'O entregador coletou seu pedido e está a caminho.' : 'Seu pedido foi entregue com sucesso.',
             createdAt: serverTimestamp(),
@@ -114,11 +144,22 @@ export default function MultiDeliveryNavigation() {
         try {
             await batch.commit();
             toast({ title: nextStatus === 'in-progress' ? 'Coleta Confirmada' : 'Entrega Finalizada' });
+            setIsPaymentDialogOpen(false);
+            setTaskToFinish(null);
         } catch (e) {
             toast({ title: "Erro ao atualizar", variant: "destructive" });
         } finally {
             setIsUpdating(null);
         }
+    };
+
+    const simulatePixConfirmation = () => {
+        setIsCheckingPix(true);
+        setTimeout(() => {
+            setIsCheckingPix(false);
+            setPixStep('confirmed');
+            toast({ title: "Pix Recebido!", description: "Status: Pagamento identificado via Mercado Pago." });
+        }, 3000);
     };
 
     const mapStops = useMemo(() => stops.filter(s => s.coords).map(s => ({
@@ -225,7 +266,7 @@ export default function MultiDeliveryNavigation() {
                                                 stop.type === 'pickup' ? "bg-primary" : "bg-emerald-600 hover:bg-emerald-700"
                                             )}
                                             onClick={() => handleAction(stop)}
-                                            disabled={!!isUpdating}
+                                            disabled={!!isUpdating && isUpdating === stop.deliveryId}
                                         >
                                             {isUpdating === stop.deliveryId ? (
                                                 <Loader2 className="animate-spin" />
@@ -243,6 +284,103 @@ export default function MultiDeliveryNavigation() {
                     </div>
                 </div>
             </div>
+
+            {/* Modal de confirmação de pagamento do cliente (Replicado para o modo mapa) */}
+            <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
+                setIsPaymentDialogOpen(open);
+                if (!open) {
+                    setPixStep('choice');
+                    setIsCheckingPix(false);
+                }
+            }}>
+                <DialogContent className="max-w-[90vw] rounded-3xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="font-headline text-2xl font-black text-center">
+                            {pixStep === 'choice' ? 'Forma de Pagamento' : 'Pagamento via Pix'}
+                        </DialogTitle>
+                        <DialogDescription className="text-center">
+                            {pixStep === 'choice' 
+                                ? 'Como o cliente realizou o pagamento?' 
+                                : 'Apresente o QR Code para o cliente.'}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {pixStep === 'choice' && (
+                        <div className="grid grid-cols-2 gap-4 py-6">
+                            <Button 
+                                variant="outline" 
+                                className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-emerald-500 hover:bg-emerald-50"
+                                onClick={() => taskToFinish && performStatusUpdate(taskToFinish, 'finished', 'cash')}
+                            >
+                                <div className="size-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
+                                    <Banknote size={28} />
+                                </div>
+                                <span className="font-bold">Dinheiro</span>
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-[#32BCAD] hover:bg-[#32BCAD]/5"
+                                onClick={() => setPixStep('qrcode')}
+                            >
+                                <div className="size-12 rounded-xl bg-[#32BCAD] text-white flex items-center justify-center">
+                                    <Smartphone size={28} />
+                                </div>
+                                <span className="font-bold">Pix</span>
+                            </Button>
+                        </div>
+                    )}
+
+                    {pixStep === 'qrcode' && (
+                        <div className="flex flex-col items-center py-6">
+                            <div className="p-4 bg-white rounded-2xl shadow-inner border relative">
+                                <Image 
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=LucasExpresso-Pedido-${taskToFinish?.id}`}
+                                    alt="QR Code Pix"
+                                    width={200}
+                                    height={200}
+                                    className="rounded-lg"
+                                />
+                                {isCheckingPix && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+                                        <Loader2 className="size-10 text-[#32BCAD] animate-spin" />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="mt-6 text-center w-full">
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Valor</p>
+                                <h3 className="text-3xl font-black text-[#32BCAD] font-headline">
+                                    {taskToFinish?.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </h3>
+                                <Button 
+                                    className="w-full mt-8 h-14 rounded-2xl bg-[#32BCAD] hover:bg-[#2aa395] font-bold gap-2"
+                                    onClick={simulatePixConfirmation}
+                                    disabled={isCheckingPix}
+                                >
+                                    {isCheckingPix ? <Loader2 className="animate-spin size-5" /> : <RefreshCw className="size-5" />}
+                                    Verificar Notificação
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {pixStep === 'confirmed' && (
+                        <div className="flex flex-col items-center py-10 text-center animate-in zoom-in-95">
+                            <div className="size-20 rounded-full bg-emerald-500 flex items-center justify-center text-white mb-6">
+                                <CheckCircle size={48} />
+                            </div>
+                            <h3 className="text-2xl font-black font-headline text-emerald-600">Pix Confirmado!</h3>
+                            <Button 
+                                className="w-full mt-8 h-14 rounded-2xl font-black text-base shadow-xl"
+                                onClick={() => taskToFinish && performStatusUpdate(taskToFinish, 'finished', 'pix')}
+                            >
+                                FINALIZAR ENTREGA
+                            </Button>
+                        </div>
+                    )}
+
+                    <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setIsPaymentDialogOpen(false)}>Cancelar</Button>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
