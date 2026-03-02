@@ -37,6 +37,7 @@ type OptimizedStop = {
     status: Delivery['status'];
     coords?: Coords;
     acceptedAt?: any;
+    createdAt?: any;
 };
 
 export default function MultiDeliveryNavigation() {
@@ -107,7 +108,8 @@ export default function MultiDeliveryNavigation() {
                     type: 'pickup', 
                     status: d.status, 
                     coords: coords || undefined,
-                    acceptedAt: d.acceptedAt
+                    acceptedAt: d.acceptedAt,
+                    createdAt: d.createdAt
                 });
             }
 
@@ -119,7 +121,8 @@ export default function MultiDeliveryNavigation() {
                     type: 'dropoff', 
                     status: d.status, 
                     coords: coords || undefined,
-                    acceptedAt: d.acceptedAt
+                    acceptedAt: d.acceptedAt,
+                    createdAt: d.createdAt
                 });
             }
 
@@ -262,9 +265,9 @@ export default function MultiDeliveryNavigation() {
                         {stops.map((stop, idx) => {
                             const delivery = deliveries.find(d => d.id === stop.deliveryId);
                             
-                            // Lógica de atraso na navegação
-                            const acceptedAt = stop.acceptedAt?.toDate?.()?.getTime();
-                            const isDelayed = acceptedAt && ((now - acceptedAt) / (1000 * 60) > timeLimitMin);
+                            // Lógica de atraso reativa
+                            const startTime = stop.acceptedAt?.toDate?.()?.getTime() || stop.createdAt?.toDate?.()?.getTime();
+                            const isDelayed = startTime && ((now - startTime) / (1000 * 60) > timeLimitMin);
 
                             return (
                                 <div key={`${stop.deliveryId}-${idx}`} className="flex gap-4 relative z-10">

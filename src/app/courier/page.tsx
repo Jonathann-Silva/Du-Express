@@ -34,11 +34,11 @@ export default function CourierDashboard() {
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   
-  // Estado para forçar re-render do timer
+  // Estado para forçar re-render do timer a cada 10 segundos
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 10000); // Atualiza a cada 10s
+    const interval = setInterval(() => setNow(Date.now()), 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -281,6 +281,7 @@ export default function CourierDashboard() {
                     isUpdating={isUpdating === task.id}
                     courierRate={userProfile?.deliveryRate || 6}
                     timeLimit={timeLimitMin}
+                    now={now}
                   />
                 ))
               ) : (
@@ -300,6 +301,7 @@ export default function CourierDashboard() {
                     isUpdating={isUpdating === task.id}
                     courierRate={userProfile?.deliveryRate || 6}
                     timeLimit={timeLimitMin}
+                    now={now}
                   />
                 ))
               ) : (
@@ -421,18 +423,19 @@ export default function CourierDashboard() {
   );
 }
 
-function TaskCard({ task, onAction, isUpdating, courierRate, timeLimit }: { task: Delivery, onAction: () => void, isUpdating: boolean, courierRate: number, timeLimit: number }) {
+function TaskCard({ task, onAction, isUpdating, courierRate, timeLimit, now }: { task: Delivery, onAction: () => void, isUpdating: boolean, courierRate: number, timeLimit: number, now: number }) {
   const isAccepted = task.status === 'accepted';
   const isCollect = task.paymentMethod === 'collect';
 
-  // Lógica de cálculo de atraso
+  // Lógica de cálculo de atraso reativa ao tempo real
   const isDelayed = useMemo(() => {
-    if (!task.acceptedAt) return false;
-    const acceptedTime = task.acceptedAt.toDate().getTime();
-    const now = Date.now();
-    const diffMin = (now - acceptedTime) / (1000 * 60);
+    // Tenta usar o horário de aceite, se não tiver (ex: tarefas legadas), usa o de criação
+    const startTime = task.acceptedAt?.toDate().getTime() || task.createdAt?.toDate().getTime();
+    if (!startTime) return false;
+    
+    const diffMin = (now - startTime) / (1000 * 60);
     return diffMin > timeLimit;
-  }, [task.acceptedAt, timeLimit]);
+  }, [task.acceptedAt, task.createdAt, timeLimit, now]);
 
   return (
     <Card className={cn(
