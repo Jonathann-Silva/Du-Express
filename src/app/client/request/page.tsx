@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, User, Wallet, Map, ArrowRight, Loader2, CircleDot, Building, MapPin, AlertCircle, Ban, CreditCard, Banknote, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, User, Wallet, Map, ArrowRight, Loader2, CircleDot, Building, MapPin, AlertCircle, Ban, CreditCard, Banknote, CheckCircle2, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { useUser, useFirestore, useCollection } from "@/firebase";
 import { collection, addDoc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,6 +28,10 @@ export default function RequestDeliveryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+
+  // States para detecção automática de endereço
+  const [dropoffStreet, setDropoffStreet] = useState("");
+  const [dropoffNumber, setDropoffNumber] = useState("");
 
   // Busca faturas para verificar bloqueio
   const deliveriesQuery = useMemo(() => {
@@ -60,6 +64,29 @@ export default function RequestDeliveryPage() {
       { id: 'rate-londrina', value: userProfile.rateLondrina, label: 'Londrina', description: 'Entrega intermunicipal para Londrina.' },
     ].filter(r => r.value != null && r.value > 0);
   }, [userProfile]);
+
+  // Lógica de Detecção Automática de Condomínio
+  const isAutoDetectedCondo = useMemo(() => {
+    const cleanStreet = dropoffStreet.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const cleanNum = dropoffNumber.trim();
+
+    const isSabaia = (cleanStreet === "rua sabia da praia" || cleanStreet === "sabia da praia") && cleanNum === "855";
+    const isTicoTico = (cleanStreet === "rua tico tico rei" || cleanStreet === "tico tico rei") && cleanNum === "840";
+
+    return isSabaia || isTicoTico;
+  }, [dropoffStreet, dropoffNumber]);
+
+  useEffect(() => {
+    if (isAutoDetectedCondo && userProfile?.condoRateGoldemItalian) {
+      if (selectedPrice !== userProfile.condoRateGoldemItalian) {
+        setSelectedPrice(userProfile.condoRateGoldemItalian);
+        toast({
+          title: "Condomínio Detectado",
+          description: "Taxa Cond. Goldem / Italian Ville aplicada automaticamente.",
+        });
+      }
+    }
+  }, [isAutoDetectedCondo, userProfile, selectedPrice, toast]);
 
   const handleRequest = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -105,10 +132,8 @@ export default function RequestDeliveryPage() {
     const pickup_street = formData.get("pickup_street") as string;
     const pickup_number = formData.get("pickup_number") as string;
     const pickup_neighborhood = formData.get("pickup_neighborhood") as string;
-    const dropoff_street = formData.get("dropoff_street") as string;
-    const dropoff_number = formData.get("dropoff_number") as string;
-    const dropoff_neighborhood = formData.get("dropoff_neighborhood") as string;
     const observations = formData.get("observations") as string;
+    const dropoff_neighborhood = formData.get("dropoff_neighborhood") as string;
 
     let pickup: string;
     if (!pickup_street && !pickup_number && !pickup_neighborhood) {
@@ -127,7 +152,7 @@ export default function RequestDeliveryPage() {
         pickup = `${pickup_street || ''}, ${pickup_number || ''} - ${pickup_neighborhood || ''}`.replace(/^, /, '').replace(/ - $/, '');
     }
 
-    const dropoff = `${dropoff_street || ''}, ${dropoff_number || ''} - ${dropoff_neighborhood || ''}`;
+    const dropoff = `${dropoffStreet}, ${dropoffNumber} - ${dropoff_neighborhood || ''}`;
 
     const newDelivery = {
       pickup: pickup,
@@ -247,42 +272,60 @@ export default function RequestDeliveryPage() {
         <form onSubmit={handleRequest} className="px-4 py-6 space-y-8 max-w-md mx-auto">
           
           <section className="space-y-4">
-            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">1. Tipo de Entrega</h2>
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest font-headline">1. Tipo de Entrega</h2>
+              {isAutoDetectedCondo && (
+                <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-black animate-pulse">
+                  <ShieldAlert className="size-3" />
+                  TAXA OBRIGATÓRIA
+                </div>
+              )}
+            </div>
             
             {userLoading ? <Skeleton className="h-32 w-full rounded-2xl" /> : (
                 <RadioGroup 
                     value={selectedPrice?.toString() || ""} 
-                    onValueChange={(val) => setSelectedPrice(parseFloat(val))} 
+                    onValueChange={(val) => {
+                      // Se for condomínio detectado, impede a troca manual para taxas menores
+                      if (!isAutoDetectedCondo) {
+                        setSelectedPrice(parseFloat(val));
+                      }
+                    }} 
                     className="grid grid-cols-1 gap-3"
                 >
-                    {rates.length > 0 ? rates.map((rate) => (
-                        <div key={rate.id} className="relative">
-                            <RadioGroupItem value={rate.value!.toString()} id={rate.id} className="peer sr-only" />
-                            <Label 
-                                htmlFor={rate.id} 
-                                className={cn(
-                                    "flex flex-col p-4 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden",
-                                    selectedPrice === rate.value 
-                                        ? "border-primary bg-primary/5 shadow-md" 
-                                        : "border-muted bg-card hover:bg-muted/30"
-                                )}
-                            >
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="font-bold text-sm flex items-center gap-2">
-                                        <MapPin className={cn("size-4", selectedPrice === rate.value ? "text-primary" : "text-muted-foreground")} />
-                                        {rate.label}
-                                    </span>
-                                    <span className="text-base font-black text-primary">
-                                        {rate.value!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                    </span>
-                                </div>
-                                <span className="text-[10px] text-muted-foreground font-medium">{rate.description}</span>
-                                {selectedPrice === rate.value && (
-                                    <CheckCircle2 className="absolute -right-1 -bottom-1 size-8 text-primary opacity-10" />
-                                )}
-                            </Label>
-                        </div>
-                    )) : (
+                    {rates.length > 0 ? rates.map((rate) => {
+                        const isSelected = selectedPrice === rate.value;
+                        const isDisabled = isAutoDetectedCondo && !isSelected;
+
+                        return (
+                          <div key={rate.id} className="relative">
+                              <RadioGroupItem value={rate.value!.toString()} id={rate.id} className="peer sr-only" disabled={isDisabled} />
+                              <Label 
+                                  htmlFor={rate.id} 
+                                  className={cn(
+                                      "flex flex-col p-4 rounded-2xl border-2 transition-all relative overflow-hidden",
+                                      isSelected 
+                                          ? "border-primary bg-primary/5 shadow-md" 
+                                          : (isDisabled ? "opacity-40 cursor-not-allowed border-muted bg-muted/10" : "border-muted bg-card hover:bg-muted/30 cursor-pointer")
+                                  )}
+                              >
+                                  <div className="flex justify-between items-center mb-1">
+                                      <span className="font-bold text-sm flex items-center gap-2">
+                                          <MapPin className={cn("size-4", isSelected ? "text-primary" : "text-muted-foreground")} />
+                                          {rate.label}
+                                      </span>
+                                      <span className="text-base font-black text-primary">
+                                          {rate.value!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                      </span>
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground font-medium">{rate.description}</span>
+                                  {isSelected && (
+                                      <CheckCircle2 className="absolute -right-1 -bottom-1 size-8 text-primary opacity-10" />
+                                  )}
+                              </Label>
+                          </div>
+                        );
+                    }) : (
                          <Card className="bg-amber-500/10 border-amber-500/20 text-center p-6 rounded-2xl">
                             <AlertCircle className="size-8 text-amber-500 mx-auto mb-2" />
                             <p className="text-sm font-bold text-amber-700">Nenhuma taxa configurada.</p>
@@ -368,13 +411,29 @@ export default function RequestDeliveryPage() {
                   <Label htmlFor="dropoff_street" className="text-xs font-bold text-muted-foreground ml-1">Endereço de Entrega</Label>
                   <div className="relative">
                     <Map className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-                    <Input id="dropoff_street" name="dropoff_street" placeholder="Rua Principal, 123" className="pl-10 h-12 rounded-xl bg-background" required />
+                    <Input 
+                      id="dropoff_street" 
+                      name="dropoff_street" 
+                      placeholder="Rua Principal, 123" 
+                      className="pl-10 h-12 rounded-xl bg-background" 
+                      required 
+                      value={dropoffStreet}
+                      onChange={(e) => setDropoffStreet(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="dropoff_number" className="text-xs font-bold text-muted-foreground ml-1">Número</Label>
-                    <Input id="dropoff_number" name="dropoff_number" placeholder="Ex: 123" className="h-12 rounded-xl bg-background" required/>
+                    <Input 
+                      id="dropoff_number" 
+                      name="dropoff_number" 
+                      placeholder="Ex: 123" 
+                      className="h-12 rounded-xl bg-background" 
+                      required
+                      value={dropoffNumber}
+                      onChange={(e) => setDropoffNumber(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="dropoff_neighborhood" className="text-xs font-bold text-muted-foreground ml-1">Bairro</Label>
