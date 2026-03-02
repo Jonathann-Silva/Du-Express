@@ -84,6 +84,15 @@ export default function ClientFinancePage() {
 
   const blockStatus = useMemo(() => checkClientBlockStatus(allUnpaidDeliveries || []), [allUnpaidDeliveries]);
 
+  // Verifica se o período selecionado está vencido (Prazo: Quarta da semana seguinte)
+  const isPeriodExpired = useMemo(() => {
+    // Vencimento ocorre na quarta-feira (dia 3) da semana seguinte.
+    // weekStart é Segunda. Segunda + 9 dias = Quarta da semana seguinte.
+    const deadline = addDays(weekStart, 9); 
+    deadline.setHours(23, 59, 59, 999);
+    return isBefore(deadline, new Date());
+  }, [weekStart]);
+
   // Cálculos baseados na semana selecionada para o resumo visual
   const stats = useMemo(() => {
     if (!weeklyDeliveries) return { totalWeek: 0, paidWeek: 0, unpaidWeek: 0 };
@@ -142,8 +151,20 @@ export default function ClientFinancePage() {
 
   const isLoading = userLoading || loadingDeliveries;
 
+  // Determina a cor e o rótulo do card baseado no status da semana selecionada
+  const isCurrentlyInDebtInPeriod = stats.unpaidWeek > 0;
+  const cardStatus = useMemo(() => {
+    if (isCurrentlyInDebtInPeriod && isPeriodExpired) {
+        return { color: "bg-destructive text-white", label: "PAGAMENTO VENCIDO", icon: <Ban className="size-6" /> };
+    }
+    if (isCurrentlyInDebtInPeriod) {
+        return { color: "bg-amber-500 text-white", label: "SALDO DA SEMANA", icon: <AlertCircle className="size-6" /> };
+    }
+    return { color: "bg-emerald-500 text-white", label: "CICLO LIQUIDADO", icon: <CheckCircle2 className="size-6" /> };
+  }, [isCurrentlyInDebtInPeriod, isPeriodExpired]);
+
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background outline-none">
       <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-md px-4 py-4 border-b flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/client">
@@ -153,7 +174,7 @@ export default function ClientFinancePage() {
         <h1 className="text-lg font-bold tracking-tight font-headline">Financeiro</h1>
       </header>
 
-      <main className="flex-1 p-4 overflow-y-auto pb-32">
+      <main className="flex-1 p-4 overflow-y-auto pb-32 outline-none">
         
         {/* Filtro de Semana - No Topo */}
         <section className="mb-6">
@@ -175,14 +196,14 @@ export default function ClientFinancePage() {
         <section className="mb-6">
             <Card className={cn(
                 "p-6 border-none shadow-xl transition-all relative overflow-hidden",
-                blockStatus.isBlocked ? "bg-destructive text-destructive-foreground" : (stats.unpaidWeek > 0 ? "bg-amber-500 text-white" : "bg-emerald-500 text-white")
+                cardStatus.color
             )}>
                 <div className="flex justify-between items-start mb-4">
                     <div className="p-3 rounded-2xl bg-white/20">
-                        {blockStatus.isBlocked ? <Ban className="size-6" /> : (stats.unpaidWeek > 0 ? <AlertCircle className="size-6" /> : <CheckCircle2 className="size-6" />)}
+                        {cardStatus.icon}
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-1 rounded">
-                        {blockStatus.isBlocked ? "ACESSO BLOQUEADO" : "SALDO DA SEMANA"}
+                        {cardStatus.label}
                     </span>
                 </div>
                 <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Saldo Pendente no Período</p>
@@ -197,10 +218,10 @@ export default function ClientFinancePage() {
                     <div className="mt-4 p-3 bg-black/10 rounded-xl">
                         <p className="text-[10px] font-bold leading-tight">
                             {blockStatus.isBlocked 
-                                ? "Você possui débitos de ciclos anteriores. Regularize o total acumulado para desbloquear."
-                                : "Existem pendências em outras semanas."}
+                                ? "Você possui débitos de ciclos anteriores. Regularize o total acumulado para desbloquear seu acesso."
+                                : "Existem pendências financeiras em outros períodos."}
                             <br />
-                            <span className="text-xs font-black uppercase">Total a Pagar: {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            <span className="text-xs font-black uppercase">Total Acumulado a Pagar: {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                         </p>
                     </div>
                 )}
