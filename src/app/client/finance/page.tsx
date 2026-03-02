@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Wallet, CheckCircle2, AlertCircle, Loader2, Info, Banknote, ChevronRight, AlertTriangle, Calendar, Ban } from 'lucide-react';
+import { ArrowLeft, CreditCard, Wallet, CheckCircle2, AlertCircle, Loader2, Info, Banknote, ChevronRight, AlertTriangle, Calendar, Ban, Smartphone } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -63,7 +64,7 @@ export default function ClientFinancePage() {
     
     setIsUpdating(true);
     
-    // SIMULAÇÃO DE MERCADO PAGO
+    // SIMULAÇÃO DE MERCADO PAGO (PIX)
     setTimeout(async () => {
         const batch = writeBatch(firestore);
         
@@ -77,7 +78,7 @@ export default function ClientFinancePage() {
         batch.set(notifRef, {
             userId: 'admin', // Idealmente buscaria os IDs dos admins reais
             title: 'Pagamento Recebido!',
-            description: `${userProfile?.displayName} realizou o pagamento de R$ ${totalDebt.toFixed(2)}.`,
+            description: `${userProfile?.displayName} realizou o pagamento via PIX de R$ ${totalDebt.toFixed(2)}.`,
             createdAt: serverTimestamp(),
             read: false,
             icon: 'wallet'
@@ -160,14 +161,14 @@ export default function ClientFinancePage() {
         {/* Métodos de Pagamento */}
         {totalDebt > 0 && (
             <section className="mb-8 space-y-4">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Pagar com Mercado Pago</h3>
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Pagar com PIX</h3>
                 <Card className="p-4 border-primary/20 bg-primary/5 cursor-pointer active:scale-[0.98] transition-all" onClick={handlePayDeliveries}>
                     <div className="flex items-center gap-4">
-                        <div className="size-12 rounded-xl bg-[#009EE3] flex items-center justify-center shadow-lg">
-                            <CreditCard className="text-white size-6" />
+                        <div className="size-12 rounded-xl bg-[#32BCAD] flex items-center justify-center shadow-lg">
+                            <Smartphone className="text-white size-6" />
                         </div>
                         <div className="flex-1">
-                            <p className="font-bold text-sm">Cartão ou PIX</p>
+                            <p className="font-bold text-sm">Pagar via PIX</p>
                             <p className="text-xs text-muted-foreground">Checkout seguro via Mercado Pago</p>
                         </div>
                         {isProcessing ? <Loader2 className="animate-spin text-primary" /> : <ChevronRight className="text-primary/40" />}
