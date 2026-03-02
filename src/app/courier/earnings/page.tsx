@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -6,6 +5,7 @@ import { ArrowLeft, CheckCircle, Wallet, ChevronLeft, ChevronRight, Banknote, Al
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { format, startOfWeek, addDays, subDays, addWeeks, subWeeks, getDay } from 'date-fns';
