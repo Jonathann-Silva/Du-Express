@@ -169,34 +169,61 @@ export default function AdminDashboard() {
 
   const onlineCouriersCount = useMemo(() => onlineCouriers?.length || 0, [onlineCouriers]);
 
-  const handleRefuse = (delivery: Delivery) => {
+  const handleCancelAction = (delivery: Delivery, shouldCharge: boolean) => {
     if (!firestore) return;
     setIsRefusing(true);
     const deliveryRef = doc(firestore, 'deliveries', delivery.id);
     const clientNotifRef = doc(collection(firestore, 'notifications'));
 
     const batch = writeBatch(firestore);
-    const refuseReason = delivery.cancelRequested ? 'Cancelamento solicitado pela loja e confirmado pela central.' : 'Recusado pelo administrador.';
+    let baseReason = delivery.cancelRequested ? 'Cancelamento solicitado pela loja.' : 'Recusado pelo administrador.';
     
-    batch.update(deliveryRef, { status: 'refused', observations: refuseReason });
-    batch.set(clientNotifRef, {
-      userId: delivery.clientId,
-      title: 'Entrega Recusada',
-      description: refuseReason,
-      createdAt: serverTimestamp(),
-      read: false,
-      icon: 'alert',
-      link: '/client/history'
-    });
+    if (shouldCharge) {
+      // Se cobra, o status vira 'finished' para entrar no financeiro
+      const finalReason = `${baseReason} Cobrança de deslocamento aplicada pela central.`;
+      batch.update(deliveryRef, { 
+        status: 'finished', 
+        observations: finalReason,
+        finishedAt: serverTimestamp()
+      });
+      
+      batch.set(clientNotifRef, {
+        userId: delivery.clientId,
+        title: 'Entrega Cancelada (Com Taxa)',
+        description: finalReason,
+        createdAt: serverTimestamp(),
+        read: false,
+        icon: 'alert',
+        link: '/client/history'
+      });
+    } else {
+      // Se não cobra, o status é 'refused' e o preço é zerado
+      const finalReason = `${baseReason} Sem cobrança de taxa de corrida.`;
+      batch.update(deliveryRef, { 
+        status: 'refused', 
+        observations: finalReason,
+        price: 0 
+      });
+
+      batch.set(clientNotifRef, {
+        userId: delivery.clientId,
+        title: 'Entrega Recusada/Cancelada',
+        description: finalReason,
+        createdAt: serverTimestamp(),
+        read: false,
+        icon: 'alert',
+        link: '/client/history'
+      });
+    }
 
     batch.commit().then(() => {
-      toast({ title: "Entrega Recusada" });
+      toast({ title: shouldCharge ? "Cancelado com Cobrança" : "Cancelado sem Cobrança" });
       setDeliveryToRefuse(null);
     }).catch(serverError => {
       const permissionError = new FirestorePermissionError({
         path: deliveryRef.path,
         operation: 'update',
-        requestResourceData: { status: 'refused' }
+        requestResourceData: { status: shouldCharge ? 'finished' : 'refused' }
       });
       errorEmitter.emit('permission-error', permissionError);
     }).finally(() => {
@@ -361,27 +388,57 @@ export default function AdminDashboard() {
       </Dialog>
 
       <AlertDialog open={!!deliveryToRefuse} onOpenChange={(isOpen) => !isOpen && setDeliveryToRefuse(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-3xl max-w-[90vw]">
           <AlertDialogHeader>
-            <AlertDialogTitle>{deliveryToRefuse?.cancelRequested ? 'Confirmar Cancelamento?' : 'Recusar Pedido?'}</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle>
+              {deliveryToRefuse?.cancelRequested ? 'Confirmar Cancelamento?' : 'Recusar este Pedido?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium">
               {deliveryToRefuse?.cancelRequested 
-                ? 'O cliente solicitou este cancelamento. Ao confirmar, o pedido será recusado.' 
-                : 'O cliente será notificado sobre a recusa.'}
+                ? 'A loja solicitou o cancelamento. Deseja cobrar a corrida por conta de deslocamento do entregador?' 
+                : 'Você está recusando o pedido da loja. Como deseja prosseguir com a cobrança?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRefusing}>Voltar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deliveryToRefuse && handleRefuse(deliveryToRefuse)}
+          
+          <div className="flex flex-col gap-3 py-4">
+            <Button 
+              variant="destructive" 
+              className="h-14 rounded-2xl font-bold text-base shadow-lg shadow-destructive/20 active:scale-95 transition-all"
+              onClick={() => deliveryToRefuse && handleCancelAction(deliveryToRefuse, true)}
               disabled={isRefusing}
-              className={cn(buttonVariants({ variant: "destructive" }))}
             >
-              {isRefusing ? <Loader2 className="animate-spin" /> : (deliveryToRefuse?.cancelRequested ? 'Confirmar e Recusar' : 'Confirmar Recusa')}
-            </AlertDialogAction>
+              {isRefusing ? <Loader2 className="animate-spin" /> : 'Confirmar e COBRAR valor'}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="h-14 rounded-2xl font-bold text-base border-destructive/30 text-destructive hover:bg-destructive/5 active:scale-95 transition-all"
+              onClick={() => deliveryToRefuse && handleCancelAction(deliveryToRefuse, false)}
+              disabled={isRefusing}
+            >
+              {isRefusing ? <Loader2 className="animate-spin" /> : 'Confirmar SEM cobrar nada'}
+            </Button>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel className="w-full rounded-2xl h-12 font-medium" disabled={isRefusing}>
+              Voltar
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
+}
+
+function Badge({ children, variant = 'default', className }: { children: React.ReactNode, variant?: 'default' | 'outline', className?: string }) {
+    return (
+        <span className={cn(
+            "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight",
+            variant === 'default' ? "bg-primary text-primary-foreground" : "border text-muted-foreground",
+            className
+        )}>
+            {children}
+        </span>
+    )
 }
