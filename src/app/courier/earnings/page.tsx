@@ -138,7 +138,7 @@ export default function CourierEarningsPage() {
                     )}
                     {finalBalance < 0 && !isLoading && (
                         <p className="text-[10px] font-bold bg-black/20 px-3 py-1 rounded-full mt-2">
-                            Valor excedente recebido em mãos
+                            Valor excedente recebido em dinheiro
                         </p>
                     )}
                 </div>
@@ -153,7 +153,7 @@ export default function CourierEarningsPage() {
                         )}
                     </Card>
                     <Card className="p-4 bg-amber-500/10 border-amber-500/20">
-                        <p className="text-[10px] font-black uppercase text-amber-600">Recebido em Mãos</p>
+                        <p className="text-[10px] font-black uppercase text-amber-600">Recebido em Dinheiro</p>
                         {isLoading ? <Skeleton className="h-6 w-20 mt-1" /> : (
                             <p className="text-lg font-bold text-amber-700">
                                 {stats.receivedInCash.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
