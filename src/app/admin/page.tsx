@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -219,7 +218,7 @@ export default function AdminDashboard() {
         <NotificationsPopover />
       </header>
 
-      <main className="flex-1 overflow-y-auto pb-28">
+      <main className="flex-1 overflow-y-auto pb-28 outline-none">
         <section className="grid grid-cols-2 gap-4 px-6 mt-4">
           <Card className="rounded-2xl shadow-sm">
             <CardContent className="p-5">

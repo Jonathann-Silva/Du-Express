@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -223,7 +222,7 @@ export default function CourierDashboard() {
         <NotificationsPopover />
       </header>
 
-      <main className="flex-1 overflow-y-auto px-6 pb-24">
+      <main className="flex-1 overflow-y-auto px-6 pb-24 outline-none">
         {/* Mini Card de Status do Admin */}
         <section className="py-2">
           <Card className="bg-muted/30 border-none shadow-none rounded-xl overflow-hidden">

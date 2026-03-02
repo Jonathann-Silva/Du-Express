@@ -8,7 +8,7 @@ type MobileLayoutProps = {
 
 export function MobileLayout({ children, className }: MobileLayoutProps) {
   return (
-    <div className={cn("relative flex h-dvh w-full flex-col max-w-md mx-auto bg-background shadow-2xl", className)}>
+    <div className={cn("relative flex h-dvh w-full flex-col max-w-md mx-auto bg-background shadow-2xl outline-none", className)} tabIndex={-1}>
       {children}
     </div>
   );

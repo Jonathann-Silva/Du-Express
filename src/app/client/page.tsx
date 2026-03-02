@@ -120,7 +120,7 @@ export default function ClientHomePage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto pb-24">
+      <main className="flex-1 overflow-y-auto pb-24 outline-none">
         
         {/* Banner de Bloqueio ou Aviso Financeiro */}
         {!isLoading && blockStatus.isBlocked && (
