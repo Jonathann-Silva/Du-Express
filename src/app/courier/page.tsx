@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Bike, Wallet, CheckCircle, CircleDot, Loader2, Map, MapPin, ShieldCheck, Banknote, CreditCard } from 'lucide-react';
+import { Bike, Wallet, CheckCircle, CircleDot, Loader2, Map, MapPin, ShieldCheck, Banknote, CreditCard, Smartphone } from 'lucide-react';
 import Link from 'next/link';
 import { collection, query, where, doc, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { startOfDay } from 'date-fns';
@@ -19,12 +19,23 @@ import { useToast } from '@/hooks/use-toast';
 import { ClientName } from '@/components/info/ClientName';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function CourierDashboard() {
   const { user, userProfile, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  
+  // Estados para o modal de pagamento
+  const [taskToFinish, setTaskToFinish] = useState<Delivery | null>(null);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
   // Status do Admin
   const statusDocRef = useMemo(() => {
@@ -105,17 +116,32 @@ export default function CourierDashboard() {
     }
   };
 
-  const handleFinishDelivery = async (task: Delivery) => {
+  const handleFinishClick = (task: Delivery) => {
+    if (task.paymentMethod === 'collect') {
+      setTaskToFinish(task);
+      setIsPaymentDialogOpen(true);
+    } else {
+      handleFinishDelivery(task);
+    }
+  };
+
+  const handleFinishDelivery = async (task: Delivery, finalMethod?: 'pix' | 'cash') => {
     if (!firestore || !user) return;
     setIsUpdating(task.id);
     const taskRef = doc(firestore, 'deliveries', task.id);
     const clientNotifRef = doc(collection(firestore, 'notifications'));
     const batch = writeBatch(firestore);
 
-    batch.update(taskRef, { 
+    const updateData: any = { 
       status: 'finished',
       finishedAt: serverTimestamp()
-    });
+    };
+
+    if (finalMethod) {
+      updateData.paymentMethod = finalMethod;
+    }
+
+    batch.update(taskRef, updateData);
     
     batch.set(clientNotifRef, {
         userId: task.clientId,
@@ -237,7 +263,7 @@ export default function CourierDashboard() {
                   <TaskCard 
                     key={task.id} 
                     task={task} 
-                    onAction={() => handleFinishDelivery(task)}
+                    onAction={() => handleFinishClick(task)}
                     isUpdating={isUpdating === task.id}
                     courierRate={userProfile?.deliveryRate || 6}
                   />
@@ -251,6 +277,53 @@ export default function CourierDashboard() {
           </Tabs>
         </div>
       </main>
+
+      {/* Modal de confirmação de pagamento do cliente */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent className="max-w-[90vw] rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="font-headline text-2xl font-black text-center">Como o cliente pagou?</DialogTitle>
+            <DialogDescription className="text-center">
+              O pedido foi marcado para recebimento manual. Confirme a forma de pagamento.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-6">
+            <Button 
+              variant="outline" 
+              className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-emerald-500 hover:bg-emerald-50 transition-all"
+              onClick={() => {
+                if (taskToFinish) {
+                  handleFinishDelivery(taskToFinish, 'cash');
+                  setIsPaymentDialogOpen(false);
+                  setTaskToFinish(null);
+                }
+              }}
+            >
+              <div className="size-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
+                <Banknote size={28} />
+              </div>
+              <span className="font-bold">Dinheiro</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-[#32BCAD] hover:bg-[#32BCAD]/5 transition-all"
+              onClick={() => {
+                if (taskToFinish) {
+                  handleFinishDelivery(taskToFinish, 'pix');
+                  setIsPaymentDialogOpen(false);
+                  setTaskToFinish(null);
+                }
+              }}
+            >
+              <div className="size-12 rounded-xl bg-[#32BCAD] text-white flex items-center justify-center">
+                <Smartphone size={28} />
+              </div>
+              <span className="font-bold">Pix</span>
+            </Button>
+          </div>
+          <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setIsPaymentDialogOpen(false)}>Cancelar</Button>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
