@@ -28,7 +28,7 @@ export default function RequestDeliveryPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
+  const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
 
   // States para detecção automática de endereço
@@ -67,6 +67,11 @@ export default function RequestDeliveryPage() {
     ].filter(r => r.value != null && r.value > 0);
   }, [userProfile]);
 
+  const selectedPrice = useMemo(() => {
+    const rate = rates.find(r => r.id === selectedRateId);
+    return rate ? rate.value : null;
+  }, [selectedRateId, rates]);
+
   const isAutoDetectedGoldem = useMemo(() => {
     const cleanStreet = dropoffStreet.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     const cleanNum = dropoffNumber.trim();
@@ -86,17 +91,17 @@ export default function RequestDeliveryPage() {
 
   useEffect(() => {
     if (isAutoDetectedGoldem && userProfile?.condoRateGoldemItalian) {
-      if (selectedPrice !== userProfile.condoRateGoldemItalian) {
-        setSelectedPrice(userProfile.condoRateGoldemItalian);
+      if (selectedRateId !== 'rate-condo-gi') {
+        setSelectedRateId('rate-condo-gi');
         toast({ title: "Condomínio Detectado", description: "Taxa Cond. Goldem / Italian Ville aplicada automaticamente." });
       }
     } else if (isAutoDetectedMonteRey && userProfile?.condoRateMonteRey) {
-      if (selectedPrice !== userProfile.condoRateMonteRey) {
-        setSelectedPrice(userProfile.condoRateMonteRey);
+      if (selectedRateId !== 'rate-condo-mr') {
+        setSelectedRateId('rate-condo-mr');
         toast({ title: "Condomínio Detectado", description: "Taxa Cond. Monte Rey / Bem Viver aplicada automaticamente." });
       }
     }
-  }, [isAutoDetectedGoldem, isAutoDetectedMonteRey, userProfile, selectedPrice, toast]);
+  }, [isAutoDetectedGoldem, isAutoDetectedMonteRey, userProfile, selectedRateId, toast]);
 
   const handleRequest = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -174,13 +179,13 @@ export default function RequestDeliveryPage() {
               <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest font-headline">1. Tipo de Entrega</h2>
               {(isAutoDetectedGoldem || isAutoDetectedMonteRey) && <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-black animate-pulse"><ShieldAlert className="size-3" /> TAXA OBRIGATÓRIA</div>}
             </div>
-            <RadioGroup value={selectedPrice?.toString() || ""} onValueChange={(val) => !isAutoDetectedGoldem && !isAutoDetectedMonteRey && setSelectedPrice(parseFloat(val))} className="grid gap-3">
+            <RadioGroup value={selectedRateId || ""} onValueChange={(val) => !isAutoDetectedGoldem && !isAutoDetectedMonteRey && setSelectedRateId(val)} className="grid gap-3">
                 {rates.map((rate) => {
-                    const isSelected = selectedPrice === rate.value;
+                    const isSelected = selectedRateId === rate.id;
                     const isDisabled = (isAutoDetectedGoldem || isAutoDetectedMonteRey) && !isSelected;
                     return (
                       <div key={rate.id} className="relative">
-                          <RadioGroupItem value={rate.value!.toString()} id={rate.id} className="sr-only" disabled={isDisabled} />
+                          <RadioGroupItem value={rate.id} id={rate.id} className="sr-only" disabled={isDisabled} />
                           <Label htmlFor={rate.id} className={cn("flex flex-col p-4 rounded-2xl border-2 transition-all relative overflow-hidden", isSelected ? "border-primary bg-primary/5 shadow-md" : (isDisabled ? "opacity-40 cursor-not-allowed border-muted bg-muted/10" : "border-muted bg-card hover:bg-muted/30 cursor-pointer"))}>
                               <div className="flex justify-between items-center mb-1">
                                   <span className="font-bold text-sm flex items-center gap-2"><MapPin className={cn("size-4", isSelected ? "text-primary" : "text-muted-foreground")} /> {rate.label}</span>
