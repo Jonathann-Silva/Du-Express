@@ -112,11 +112,21 @@ export default function CourierDashboard() {
   const myTasks = useMemo(() => {
     if (!rawTasks) return [];
     return [...rawTasks].sort((a, b) => {
-      const dateA = a.createdAt?.toDate?.()?.getTime() || 0;
-      const dateB = b.createdAt?.toDate?.()?.getTime() || 0;
-      return dateB - dateA;
+      // Cálculo de atraso para ordenação prioritária
+      const startA = a.acceptedAt?.toDate?.()?.getTime() || a.createdAt?.toDate?.()?.getTime() || 0;
+      const isDelayedA = startA && ((now - startA) / (1000 * 60) > timeLimitMin);
+
+      const startB = b.acceptedAt?.toDate?.()?.getTime() || b.createdAt?.toDate?.()?.getTime() || 0;
+      const isDelayedB = startB && ((now - startB) / (1000 * 60) > timeLimitMin);
+
+      // Prioridade 1: Entregas em atraso no topo
+      if (isDelayedA && !isDelayedB) return -1;
+      if (!isDelayedA && isDelayedB) return 1;
+
+      // Prioridade 2: Mais recentes primeiro (dentro de cada grupo)
+      return startB - startA;
     });
-  }, [rawTasks]);
+  }, [rawTasks, now, timeLimitMin]);
 
   const coletasPendentes = useMemo(() => myTasks.filter(t => t.status === 'accepted'), [myTasks]);
   const entregasEmAndamento = useMemo(() => myTasks.filter(t => t.status === 'in-progress'), [myTasks]);
