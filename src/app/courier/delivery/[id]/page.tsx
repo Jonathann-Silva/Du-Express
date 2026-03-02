@@ -376,7 +376,7 @@ export default function ActiveDeliveryPage() {
               </DialogTitle>
               <DialogDescription className="text-center">
                 {pixStep === 'choice' 
-                    ? 'O pedido foi marcado para recebimento manual. Como o cliente pagou?' 
+                    ? 'O pedido foi marcado para recebimento manual. Como o cliente irá pagar?' 
                     : 'Peça ao cliente para escanear o código abaixo.'}
               </DialogDescription>
             </DialogHeader>

@@ -309,7 +309,7 @@ export default function CourierDashboard() {
             </DialogTitle>
             <DialogDescription className="text-center">
                 {pixStep === 'choice' 
-                    ? 'O pedido foi marcado para recebimento manual. Como o cliente pagou?' 
+                    ? 'O pedido foi marcado para recebimento manual. Como o cliente irá pagar?' 
                     : 'Apresente o código abaixo ao cliente para receber o valor.'}
             </DialogDescription>
           </DialogHeader>

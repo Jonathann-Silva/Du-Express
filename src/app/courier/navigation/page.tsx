@@ -300,7 +300,7 @@ export default function MultiDeliveryNavigation() {
                         </DialogTitle>
                         <DialogDescription className="text-center">
                             {pixStep === 'choice' 
-                                ? 'Como o cliente realizou o pagamento?' 
+                                ? 'O pedido foi marcado para recebimento manual. Como o cliente irá pagar?' 
                                 : 'Apresente o QR Code para o cliente.'}
                         </DialogDescription>
                     </DialogHeader>
