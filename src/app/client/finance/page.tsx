@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -154,7 +155,7 @@ export default function ClientFinancePage() {
 
       <main className="flex-1 p-4 overflow-y-auto pb-32">
         
-        {/* Filtro de Semana - Agora no Topo */}
+        {/* Filtro de Semana - No Topo */}
         <section className="mb-6">
             <Card className="p-2 bg-muted/50 border shadow-sm rounded-2xl flex items-center justify-between">
                 <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="rounded-xl h-12 w-12" disabled={isLoading}>
@@ -170,30 +171,37 @@ export default function ClientFinancePage() {
             </Card>
         </section>
 
-        {/* Resumo de Dívida Global */}
+        {/* Resumo de Dívida Dinâmico (Filtro da Semana) */}
         <section className="mb-6">
             <Card className={cn(
                 "p-6 border-none shadow-xl transition-all relative overflow-hidden",
-                blockStatus.isBlocked ? "bg-destructive text-destructive-foreground" : (totalDebt > 0 ? "bg-amber-500 text-white" : "bg-emerald-500 text-white")
+                blockStatus.isBlocked ? "bg-destructive text-destructive-foreground" : (stats.unpaidWeek > 0 ? "bg-amber-500 text-white" : "bg-emerald-500 text-white")
             )}>
                 <div className="flex justify-between items-start mb-4">
                     <div className="p-3 rounded-2xl bg-white/20">
-                        {blockStatus.isBlocked ? <Ban className="size-6" /> : (totalDebt > 0 ? <AlertCircle className="size-6" /> : <CheckCircle2 className="size-6" />)}
+                        {blockStatus.isBlocked ? <Ban className="size-6" /> : (stats.unpaidWeek > 0 ? <AlertCircle className="size-6" /> : <CheckCircle2 className="size-6" />)}
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-1 rounded">
-                        {blockStatus.isBlocked ? "ACESSO BLOQUEADO" : "SALDO TOTAL"}
+                        {blockStatus.isBlocked ? "ACESSO BLOQUEADO" : "SALDO DA SEMANA"}
                     </span>
                 </div>
-                <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Saldo Devedor Acumulado</p>
-                {userLoading ? <Skeleton className="h-10 w-32 bg-white/20 mt-1" /> : (
+                <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Saldo Pendente no Período</p>
+                {isLoading ? <Skeleton className="h-10 w-32 bg-white/20 mt-1" /> : (
                     <h2 className="text-4xl font-black mt-1">
-                        {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {stats.unpaidWeek.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </h2>
                 )}
                 
-                {blockStatus.isBlocked && (
+                {/* Informação de Débito Acumulado (apenas se houver bloqueio ou dívida total maior que a da semana) */}
+                {(blockStatus.isBlocked || (totalDebt > stats.unpaidWeek)) && (
                     <div className="mt-4 p-3 bg-black/10 rounded-xl">
-                        <p className="text-[10px] font-bold leading-tight">Você possui débitos de semanas anteriores. Regularize agora para desbloquear seu acesso.</p>
+                        <p className="text-[10px] font-bold leading-tight">
+                            {blockStatus.isBlocked 
+                                ? "Você possui débitos de ciclos anteriores. Regularize o total acumulado para desbloquear."
+                                : "Existem pendências em outras semanas."}
+                            <br />
+                            <span className="text-xs font-black uppercase">Total a Pagar: {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </p>
                     </div>
                 )}
             </Card>
