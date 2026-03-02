@@ -49,6 +49,7 @@ function LoginContent() {
             toast({
                 title: 'Login bem-sucedido!',
                 description: `Redirecionando para o painel de ${userRoleInDb}...`,
+                duration: 2000,
             });
             const redirectTo = searchParams.get('redirectTo') || `/${userRoleInDb}`;
             router.push(redirectTo);
