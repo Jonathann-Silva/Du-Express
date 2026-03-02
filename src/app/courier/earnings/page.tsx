@@ -92,8 +92,6 @@ export default function CourierEarningsPage() {
         if (activeFilter === 'month') setCurrentDate(prev => addMonths(prev, 1));
     };
 
-    const handleResetDate = () => setCurrentDate(new Date());
-
     const [deliveries, setDeliveries] = useState<Delivery[] | null>(null);
     const [deliveriesLoading, setDeliveriesLoading] = useState(true);
 
@@ -133,10 +131,9 @@ export default function CourierEarningsPage() {
         fetchEarnings();
     }, [firestore, user?.uid, dateRangeStart, dateRangeEnd]);
 
-    // Lógica: Usa a taxa estipulada no perfil do motoboy para calcular os ganhos reais
     const totalEarnings = useMemo(() => {
         if (!deliveries || !userProfile) return 0;
-        const courierRate = userProfile.deliveryRate || 6; // Padrão 6,00 se não estiver definido
+        const courierRate = userProfile.deliveryRate || 6;
         return deliveries.length * courierRate;
     }, [deliveries, userProfile]);
 
@@ -151,13 +148,10 @@ export default function CourierEarningsPage() {
                     </Link>
                 </Button>
                 <h1 className="text-lg font-bold tracking-tight font-headline">Extrato de Ganhos</h1>
-                <Button variant="ghost" size="icon" className="rounded-full" onClick={handleResetDate}>
-                    <Calendar className={cn(format(currentDate, 'yyyy-MM-dd') !== format(new Date(), 'yyyy-MM-dd') && "text-primary")} />
-                </Button>
+                <div className="size-10" />
             </header>
 
             <main className="flex-1 overflow-y-auto px-4 pb-24">
-                {/* Filtros Rápidos */}
                 <div className="mt-4 flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     {filterButtons.map(({ label, type }) => (
                          <button 
@@ -178,7 +172,6 @@ export default function CourierEarningsPage() {
                     ))}
                 </div>
 
-                {/* Seletor de Período */}
                 <section className="mt-4">
                     <Card className="p-3 bg-card border shadow-sm rounded-2xl">
                         <div className="flex items-center justify-between">
@@ -196,7 +189,6 @@ export default function CourierEarningsPage() {
                     </Card>
                 </section>
 
-                {/* Card de Valor Total (Repasse estipulado para o Motoboy) */}
                 <div className="mt-4 p-8 rounded-[2rem] bg-primary text-primary-foreground flex flex-col items-center text-center shadow-xl shadow-primary/20 relative overflow-hidden">
                     <div className="absolute top-0 right-0 -mr-8 -mt-8 opacity-10">
                         <Banknote size={160} />
@@ -216,7 +208,6 @@ export default function CourierEarningsPage() {
                     </div>
                 </div>
 
-                {/* Lista de Entregas */}
                 <div className="mt-8 space-y-4">
                     <div className="flex items-center justify-between mb-2 px-1">
                         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest font-headline">Detalhes das Corridas</h3>
