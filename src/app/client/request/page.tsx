@@ -220,9 +220,24 @@ export default function RequestDeliveryPage() {
                 ))}
             </RadioGroup>
           </section>
+
+          <section className="space-y-4">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">3. Coleta (Opcional)</h2>
+            <Card className="p-5 rounded-2xl border-none shadow-sm bg-muted/30 space-y-4">
+                <p className="text-[10px] text-muted-foreground italic">Deixe em branco para usar o endereço cadastrado da sua loja.</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pickup_street" className="text-xs font-bold text-muted-foreground ml-1">Rua de Coleta</Label>
+                  <Input id="pickup_street" name="pickup_street" placeholder="Rua da loja ou outro local" className="h-12 rounded-xl bg-background" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5"><Label htmlFor="pickup_number" className="text-xs font-bold text-muted-foreground ml-1">Número</Label><Input id="pickup_number" name="pickup_number" placeholder="Ex: 123" className="h-12 rounded-xl bg-background" /></div>
+                  <div className="space-y-1.5"><Label htmlFor="pickup_neighborhood" className="text-xs font-bold text-muted-foreground ml-1">Bairro</Label><Input id="pickup_neighborhood" name="pickup_neighborhood" placeholder="Centro" className="h-12 rounded-xl bg-background" /></div>
+                </div>
+            </Card>
+          </section>
           
           <section className="space-y-4">
-            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">3. Destino</h2>
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">4. Destino</h2>
             <Card className="p-5 rounded-2xl border-none shadow-sm bg-muted/30 space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="dropoff_street" className="text-xs font-bold text-muted-foreground ml-1">Rua</Label>
