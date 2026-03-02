@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ArrowLeft, Store, MapPin, Info, Loader2, Package, Map as MapIcon } from 'lucide-react';
@@ -29,7 +30,7 @@ export default function TaskDetailsPage() {
   const deliveryId = params.id as string;
   
   const firestore = useFirestore();
-  const { user: courierUser } = useUser();
+  const { user: courierUser, userProfile } = useUser();
 
   const [isAccepting, setIsAccepting] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<Coords | null>(null);
@@ -178,6 +179,8 @@ export default function TaskDetailsPage() {
       );
   }
 
+  const courierRate = userProfile?.deliveryRate || 6;
+
   return (
     <>
       <header className="flex items-center bg-background p-4 pt-6 justify-between sticky top-0 z-10 shrink-0">
@@ -214,7 +217,7 @@ export default function TaskDetailsPage() {
         <div className="mt-8 text-center bg-primary/10 dark:bg-primary/5 py-8 rounded-2xl border border-primary/20">
           <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest mb-1">Ganhos Estimados</p>
           <h1 className="text-primary text-5xl font-extrabold tracking-tighter leading-none font-headline">
-              {delivery.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {courierRate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </h1>
         </div>
 

@@ -133,10 +133,12 @@ export default function CourierEarningsPage() {
         fetchEarnings();
     }, [firestore, user?.uid, dateRangeStart, dateRangeEnd]);
 
+    // Lógica: Usa a taxa estipulada no perfil do motoboy para calcular os ganhos reais
     const totalEarnings = useMemo(() => {
-        if (!deliveries) return 0;
-        return deliveries.reduce((acc, delivery) => acc + (delivery.price || 0), 0);
-    }, [deliveries]);
+        if (!deliveries || !userProfile) return 0;
+        const courierRate = userProfile.deliveryRate || 6; // Padrão 6,00 se não estiver definido
+        return deliveries.length * courierRate;
+    }, [deliveries, userProfile]);
 
     const isLoading = userLoading || deliveriesLoading;
 
@@ -194,7 +196,7 @@ export default function CourierEarningsPage() {
                     </Card>
                 </section>
 
-                {/* Card de Valor Total (Repasse estipulado por entrega para o Motoboy) */}
+                {/* Card de Valor Total (Repasse estipulado para o Motoboy) */}
                 <div className="mt-4 p-8 rounded-[2rem] bg-primary text-primary-foreground flex flex-col items-center text-center shadow-xl shadow-primary/20 relative overflow-hidden">
                     <div className="absolute top-0 right-0 -mr-8 -mt-8 opacity-10">
                         <Banknote size={160} />
@@ -240,7 +242,9 @@ export default function CourierEarningsPage() {
                                         </div>
                                         <div className="text-right">
                                             <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Seu Repasse</p>
-                                            <p className="text-lg font-black text-primary leading-none">+{delivery.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                            <p className="text-lg font-black text-primary leading-none">
+                                                +{(userProfile?.deliveryRate || 6).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </p>
                                         </div>
                                     </div>
                                 </Card>

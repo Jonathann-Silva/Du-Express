@@ -62,10 +62,11 @@ export default function CourierDashboard() {
   const { data: dailyFinishedDeliveries } = useCollection<Delivery>(dailyStatsQuery);
 
   const { dailyEarnings, dailyTasksCount } = useMemo(() => {
-    if (!dailyFinishedDeliveries) return { dailyEarnings: 0, dailyTasksCount: 0 };
-    const earnings = dailyFinishedDeliveries.reduce((sum, delivery) => sum + delivery.price, 0);
+    if (!dailyFinishedDeliveries || !userProfile) return { dailyEarnings: 0, dailyTasksCount: 0 };
+    const courierRate = userProfile.deliveryRate || 6;
+    const earnings = dailyFinishedDeliveries.length * courierRate;
     return { dailyEarnings: earnings, dailyTasksCount: dailyFinishedDeliveries.length };
-  }, [dailyFinishedDeliveries]);
+  }, [dailyFinishedDeliveries, userProfile]);
 
   const myTasksQuery = useMemo(() => {
     if (!firestore || !user) return null;
@@ -220,6 +221,7 @@ export default function CourierDashboard() {
                     task={task} 
                     onAction={() => handleConfirmPickup(task.id)}
                     isUpdating={isUpdating === task.id}
+                    courierRate={userProfile?.deliveryRate || 6}
                   />
                 ))
               ) : (
@@ -237,6 +239,7 @@ export default function CourierDashboard() {
                     task={task} 
                     onAction={() => handleFinishDelivery(task)}
                     isUpdating={isUpdating === task.id}
+                    courierRate={userProfile?.deliveryRate || 6}
                   />
                 ))
               ) : (
@@ -252,7 +255,7 @@ export default function CourierDashboard() {
   );
 }
 
-function TaskCard({ task, onAction, isUpdating }: { task: Delivery, onAction: () => void, isUpdating: boolean }) {
+function TaskCard({ task, onAction, isUpdating, courierRate }: { task: Delivery, onAction: () => void, isUpdating: boolean, courierRate: number }) {
   const isAccepted = task.status === 'accepted';
   return (
     <Card className="p-4 rounded-xl shadow-sm border-l-4 border-l-primary overflow-hidden">
@@ -260,7 +263,7 @@ function TaskCard({ task, onAction, isUpdating }: { task: Delivery, onAction: ()
         <Badge variant="secondary" className="uppercase text-[10px] font-bold">
           {isAccepted ? 'Aguardando Coleta' : 'Em Trânsito'}
         </Badge>
-        <p className="text-lg font-bold text-primary">{task.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+        <p className="text-lg font-bold text-primary">{courierRate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
       </div>
       <div className="space-y-3 mb-4">
         <div className="flex gap-2 items-start">
