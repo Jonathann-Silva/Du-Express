@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { Bike, Wallet, CheckCircle, CircleDot, Loader2, Map, MapPin, ShieldCheck, Banknote, CreditCard, Smartphone, QrCode, Search, RefreshCw } from 'lucide-react';
+import { Bike, Wallet, CheckCircle, CircleDot, Loader2, Map, MapPin, ShieldCheck, Banknote, CreditCard, Smartphone, QrCode, Search, RefreshCw, AlertTriangle, Timer } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { collection, query, where, doc, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
@@ -34,6 +34,14 @@ export default function CourierDashboard() {
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   
+  // Estado para forçar re-render do timer
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 10000); // Atualiza a cada 10s
+    return () => clearInterval(interval);
+  }, []);
+
   // Estados para o modal de pagamento
   const [taskToFinish, setTaskToFinish] = useState<Delivery | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -48,6 +56,14 @@ export default function CourierDashboard() {
 
   const { data: appStatus, loading: statusLoading } = useDoc<AppStatus>(statusDocRef);
   const isAdminOnline = appStatus?.adminOnline;
+
+  // Busca regras de tempo limite
+  const rulesRef = useMemo(() => (
+    firestore ? doc(firestore, 'settings', 'rules') : null
+  ), [firestore]);
+  
+  const { data: rulesSetting } = useDoc<{ deliveryTimeLimit?: number }>(rulesRef);
+  const timeLimitMin = rulesSetting?.deliveryTimeLimit || 60; // Padrão 60 min
 
   const handleStatusChange = async (isOnline: boolean) => {
     if (!firestore || !user) return;
@@ -264,6 +280,7 @@ export default function CourierDashboard() {
                     onAction={() => handleConfirmPickup(task.id)}
                     isUpdating={isUpdating === task.id}
                     courierRate={userProfile?.deliveryRate || 6}
+                    timeLimit={timeLimitMin}
                   />
                 ))
               ) : (
@@ -282,6 +299,7 @@ export default function CourierDashboard() {
                     onAction={() => handleFinishClick(task)}
                     isUpdating={isUpdating === task.id}
                     courierRate={userProfile?.deliveryRate || 6}
+                    timeLimit={timeLimitMin}
                   />
                 ))
               ) : (
@@ -403,17 +421,39 @@ export default function CourierDashboard() {
   );
 }
 
-function TaskCard({ task, onAction, isUpdating, courierRate }: { task: Delivery, onAction: () => void, isUpdating: boolean, courierRate: number }) {
+function TaskCard({ task, onAction, isUpdating, courierRate, timeLimit }: { task: Delivery, onAction: () => void, isUpdating: boolean, courierRate: number, timeLimit: number }) {
   const isAccepted = task.status === 'accepted';
   const isCollect = task.paymentMethod === 'collect';
 
+  // Lógica de cálculo de atraso
+  const isDelayed = useMemo(() => {
+    if (!task.acceptedAt) return false;
+    const acceptedTime = task.acceptedAt.toDate().getTime();
+    const now = Date.now();
+    const diffMin = (now - acceptedTime) / (1000 * 60);
+    return diffMin > timeLimit;
+  }, [task.acceptedAt, timeLimit]);
+
   return (
-    <Card className="p-4 rounded-xl shadow-sm border-l-4 border-l-primary overflow-hidden">
+    <Card className={cn(
+        "p-4 rounded-xl shadow-sm border-l-4 overflow-hidden transition-all",
+        isDelayed ? "border-l-red-600 bg-red-50/30" : "border-l-primary"
+    )}>
       <div className="flex justify-between items-start mb-4">
         <Badge variant="secondary" className="uppercase text-[10px] font-bold">
           {isAccepted ? 'Aguardando Coleta' : 'Em Trânsito'}
         </Badge>
-        <p className="text-lg font-bold text-primary">{courierRate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+        <div className="text-right">
+            <p className={cn("text-lg font-bold", isDelayed ? "text-red-600" : "text-primary")}>
+                {courierRate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </p>
+            {isDelayed && (
+                <div className="flex items-center gap-1 text-[10px] font-black text-red-600 uppercase animate-pulse">
+                    <Timer className="size-3" />
+                    ENTREGA EM ATRASO
+                </div>
+            )}
+        </div>
       </div>
 
       {isCollect && (
@@ -447,7 +487,7 @@ function TaskCard({ task, onAction, isUpdating, courierRate }: { task: Delivery,
             <Map className="mr-2 size-4" /> Ver no Mapa
           </Link>
         </Button>
-        <Button size="sm" className="flex-1 rounded-lg font-bold" onClick={onAction} disabled={isUpdating}>
+        <Button size="sm" className={cn("flex-1 rounded-lg font-bold", isDelayed && "bg-red-600 hover:bg-red-700")} onClick={onAction} disabled={isUpdating}>
           {isUpdating ? <Loader2 className="animate-spin" /> : (isAccepted ? 'Confirmar Retirada' : 'Finalizar Entrega')}
         </Button>
       </div>

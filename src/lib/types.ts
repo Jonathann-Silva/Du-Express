@@ -13,6 +13,7 @@ export type Delivery = {
   clientId: string;
   courierId?: string;
   createdAt: Timestamp;
+  acceptedAt?: Timestamp;
   finishedAt?: Timestamp;
   observations?: string;
   paid?: boolean; // Pago para o motoboy

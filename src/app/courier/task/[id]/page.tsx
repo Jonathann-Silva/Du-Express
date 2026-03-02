@@ -104,9 +104,11 @@ export default function TaskDetailsPage() {
     const batch = writeBatch(firestore);
 
     // 1. Update the delivery document with courierId and set status to 'accepted'
+    // Adicionado acceptedAt para controle de tempo limite
     batch.update(dRef, { 
       courierId: courierUser.uid,
-      status: 'accepted'
+      status: 'accepted',
+      acceptedAt: serverTimestamp()
     });
 
     // 2. Create a notification for the client

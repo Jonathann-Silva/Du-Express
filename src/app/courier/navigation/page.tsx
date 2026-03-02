@@ -2,11 +2,11 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, Store, MapPin, Loader2, Navigation as NavIcon, Package, Banknote, Smartphone, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, Store, MapPin, Loader2, Navigation as NavIcon, Package, Banknote, Smartphone, RefreshCw, Timer } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { useUser, useFirestore, useCollection } from '@/firebase';
+import { useUser, useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, orderBy, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import type { Delivery, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,7 @@ type OptimizedStop = {
     type: 'pickup' | 'dropoff';
     status: Delivery['status'];
     coords?: Coords;
+    acceptedAt?: any;
 };
 
 export default function MultiDeliveryNavigation() {
@@ -48,6 +49,12 @@ export default function MultiDeliveryNavigation() {
     const [stops, setStops] = useState<OptimizedStop[]>([]);
     const [isGeocoding, setIsGeocoding] = useState(true);
     const [isExpanded, setIsExpanded] = useState(true);
+    const [now, setNow] = useState(Date.now());
+
+    useEffect(() => {
+        const interval = setInterval(() => setNow(Date.now()), 10000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Estados para o modal de pagamento Pix
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -65,6 +72,13 @@ export default function MultiDeliveryNavigation() {
     }, [firestore, user]);
 
     const { data: deliveries, loading: loadingTasks } = useCollection<Delivery>(activeTasksQuery);
+
+    // Busca regras de tempo limite
+    const rulesRef = useMemo(() => (
+        firestore ? doc(firestore, 'settings', 'rules') : null
+    ), [firestore]);
+    const { data: rulesSetting } = useDoc<{ deliveryTimeLimit?: number }>(rulesRef);
+    const timeLimitMin = rulesSetting?.deliveryTimeLimit || 60;
 
     useEffect(() => {
         if (navigator.geolocation) {
@@ -87,12 +101,26 @@ export default function MultiDeliveryNavigation() {
 
             for (const d of pickups) {
                 const coords = await geocodeAddress(d.pickup);
-                newStops.push({ deliveryId: d.id, address: d.pickup, type: 'pickup', status: d.status, coords: coords || undefined });
+                newStops.push({ 
+                    deliveryId: d.id, 
+                    address: d.pickup, 
+                    type: 'pickup', 
+                    status: d.status, 
+                    coords: coords || undefined,
+                    acceptedAt: d.acceptedAt
+                });
             }
 
             for (const d of dropoffs) {
                 const coords = await geocodeAddress(d.dropoff);
-                newStops.push({ deliveryId: d.id, address: d.dropoff, type: 'dropoff', status: d.status, coords: coords || undefined });
+                newStops.push({ 
+                    deliveryId: d.id, 
+                    address: d.dropoff, 
+                    type: 'dropoff', 
+                    status: d.status, 
+                    coords: coords || undefined,
+                    acceptedAt: d.acceptedAt
+                });
             }
 
             setStops(newStops);
@@ -233,12 +261,17 @@ export default function MultiDeliveryNavigation() {
                         
                         {stops.map((stop, idx) => {
                             const delivery = deliveries.find(d => d.id === stop.deliveryId);
+                            
+                            // Lógica de atraso na navegação
+                            const acceptedAt = stop.acceptedAt?.toDate?.()?.getTime();
+                            const isDelayed = acceptedAt && ((now - acceptedAt) / (1000 * 60) > timeLimitMin);
+
                             return (
                                 <div key={`${stop.deliveryId}-${idx}`} className="flex gap-4 relative z-10">
                                     <div className="flex-none flex flex-col items-center">
                                         <div className={cn(
-                                            "size-10 rounded-full flex items-center justify-center shadow-lg",
-                                            stop.type === 'pickup' ? "bg-primary text-primary-foreground" : "bg-red-500 text-white"
+                                            "size-10 rounded-full flex items-center justify-center shadow-lg transition-colors",
+                                            isDelayed ? "bg-red-600 text-white" : (stop.type === 'pickup' ? "bg-primary text-primary-foreground" : "bg-emerald-500 text-white")
                                         )}>
                                             {stop.type === 'pickup' ? <Store size={18} /> : <MapPin size={18} />}
                                         </div>
@@ -249,11 +282,11 @@ export default function MultiDeliveryNavigation() {
                                             <div>
                                                 <p className={cn(
                                                     "text-[10px] font-bold uppercase tracking-wider",
-                                                    stop.type === 'pickup' ? "text-primary" : "text-red-500"
+                                                    isDelayed ? "text-red-600 animate-pulse" : (stop.type === 'pickup' ? "text-primary" : "text-emerald-600")
                                                 )}>
-                                                    {stop.type === 'pickup' ? 'Coletar em:' : 'Entregar em:'}
+                                                    {isDelayed ? '⚠ ENTREGA EM ATRASO' : (stop.type === 'pickup' ? 'Coletar em:' : 'Entregar em:')}
                                                 </p>
-                                                <h4 className="font-bold text-base leading-tight mt-0.5">{stop.address}</h4>
+                                                <h4 className={cn("font-bold text-base leading-tight mt-0.5", isDelayed && "text-red-600")}>{stop.address}</h4>
                                             </div>
                                             <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-tighter text-primary border-primary/20 bg-primary/5">
                                                 {delivery?.clientId ? <ClientName clientId={delivery.clientId} /> : '...'}
@@ -263,7 +296,7 @@ export default function MultiDeliveryNavigation() {
                                         <Button 
                                             className={cn(
                                                 "w-full mt-4 rounded-xl font-bold h-12 shadow-sm",
-                                                stop.type === 'pickup' ? "bg-primary" : "bg-emerald-600 hover:bg-emerald-700"
+                                                isDelayed ? "bg-red-600 hover:bg-red-700" : (stop.type === 'pickup' ? "bg-primary" : "bg-emerald-600 hover:bg-emerald-700")
                                             )}
                                             onClick={() => handleAction(stop)}
                                             disabled={!!isUpdating && isUpdating === stop.deliveryId}
