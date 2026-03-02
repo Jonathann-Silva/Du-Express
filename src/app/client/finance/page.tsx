@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, doc, writeBatch, serverTimestamp, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, serverTimestamp, orderBy, limit, Timestamp } from 'firebase/firestore';
 import type { Delivery } from '@/lib/types';
 import { format, startOfWeek, isBefore, getDay, subDays, addDays, subWeeks, addWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -73,8 +73,8 @@ export default function ClientFinancePage() {
       collection(firestore, 'deliveries'),
       where('clientId', '==', user.uid),
       where('status', '==', 'finished'),
-      where('createdAt', '>=', weekStart),
-      where('createdAt', '<=', weekEnd),
+      where('createdAt', '>=', Timestamp.fromDate(weekStart)),
+      where('createdAt', '<=', Timestamp.fromDate(weekEnd)),
       orderBy('createdAt', 'desc'),
       limit(100)
     );
@@ -170,7 +170,7 @@ export default function ClientFinancePage() {
                     </span>
                 </div>
                 <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Saldo Devedor Acumulado</p>
-                {isLoading ? <Skeleton className="h-10 w-32 bg-white/20 mt-1" /> : (
+                {userLoading ? <Skeleton className="h-10 w-32 bg-white/20 mt-1" /> : (
                     <h2 className="text-4xl font-black mt-1">
                         {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </h2>
@@ -187,14 +187,14 @@ export default function ClientFinancePage() {
         {/* Filtro de Semana */}
         <section className="mb-6">
             <Card className="p-2 bg-muted/50 border shadow-sm rounded-2xl flex items-center justify-between">
-                <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="rounded-xl h-12 w-12">
+                <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="rounded-xl h-12 w-12" disabled={isLoading}>
                     <ChevronLeft className="size-6" />
                 </Button>
                 <div className="text-center">
                     <p className="text-sm font-bold">{periodLabel}</p>
                     <p className="text-[10px] uppercase font-black text-primary tracking-widest leading-none mt-0.5">Ciclo Seg-Sáb</p>
                 </div>
-                <Button variant="ghost" size="icon" onClick={handleNextWeek} className="rounded-xl h-12 w-12">
+                <Button variant="ghost" size="icon" onClick={handleNextWeek} className="rounded-xl h-12 w-12" disabled={isLoading}>
                     <ChevronRight className="size-6" />
                 </Button>
             </Card>
@@ -204,11 +204,15 @@ export default function ClientFinancePage() {
         <section className="mb-8 grid grid-cols-2 gap-3">
             <Card className="p-4 bg-muted/50 border-none shadow-sm">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Total Período</p>
-                <p className="text-lg font-black text-foreground">{stats.totalWeek.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                {isLoading ? <Skeleton className="h-6 w-24 mt-1" /> : (
+                    <p className="text-lg font-black text-foreground">{stats.totalWeek.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                )}
             </Card>
             <Card className={cn("p-4 border-none shadow-sm", stats.unpaidWeek > 0 ? "bg-primary/5 border border-primary/10" : "bg-emerald-50")}>
                 <p className="text-[10px] font-bold uppercase tracking-widest leading-none mb-1 text-primary">Pendente Período</p>
-                <p className="text-lg font-black text-primary">{stats.unpaidWeek.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                {isLoading ? <Skeleton className="h-6 w-24 mt-1" /> : (
+                    <p className="text-lg font-black text-primary">{stats.unpaidWeek.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                )}
             </Card>
         </section>
 

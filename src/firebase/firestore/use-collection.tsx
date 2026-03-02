@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { onSnapshot, Query, DocumentData, QuerySnapshot } from 'firebase/firestore';
@@ -15,7 +16,10 @@ export function useCollection<T>(query: Query | null) {
         setLoading(false);
         return;
     }
+    
+    // Limpar dados anteriores ao trocar de consulta para evitar estado estático confuso
     setLoading(true);
+    setData(null);
 
     const unsubscribe = onSnapshot(
       query,
@@ -31,7 +35,7 @@ export function useCollection<T>(query: Query | null) {
       (err: Error) => {
         if (err.message.includes('permission-denied') || err.message.includes('insufficient permissions')) {
             const permissionError = new FirestorePermissionError({
-                path: (query as any).path,
+                path: (query as any).path || 'collection',
                 operation: 'list', // 'list' for collection queries
             });
             errorEmitter.emit('permission-error', permissionError);
