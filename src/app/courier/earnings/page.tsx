@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, Calendar, CheckCircle, Wallet, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle, Wallet, ChevronLeft, ChevronRight, AlertCircle, Banknote } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -41,7 +41,7 @@ const filterButtons: { label: string, type: FilterType }[] = [
 export default function CourierEarningsPage() {
     const [activeFilter, setActiveFilter] = useState<FilterType>('week');
     const [currentDate, setCurrentDate] = useState(new Date());
-    const { user, loading: userLoading } = useUser();
+    const { user, userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
 
     const { dateRangeStart, dateRangeEnd, periodLabel, subLabel } = useMemo(() => {
@@ -52,7 +52,7 @@ export default function CourierEarningsPage() {
                     dateRangeStart: startOfDay(start),
                     dateRangeEnd: endOfDay(start),
                     periodLabel: format(start, "d 'de' MMMM", { locale: ptBR }),
-                    subLabel: 'Dia Selecionado'
+                    subLabel: 'Ganhos do Dia'
                 };
             case 'week':
                 const weekStart = startOfWeek(start, { weekStartsOn: 1 });
@@ -63,7 +63,7 @@ export default function CourierEarningsPage() {
                     dateRangeStart: weekStart,
                     dateRangeEnd: weekEnd,
                     periodLabel: `${format(weekStart, 'dd/MM')} até ${format(weekEnd, 'dd/MM')}`,
-                    subLabel: 'Semana Selecionada (Seg-Sáb)'
+                    subLabel: 'Repasse da Semana (Seg-Sáb)'
                 };
             case 'month':
             default:
@@ -75,7 +75,7 @@ export default function CourierEarningsPage() {
                     dateRangeStart: monthStart,
                     dateRangeEnd: monthEnd,
                     periodLabel: format(start, "MMMM 'de' yyyy", { locale: ptBR }),
-                    subLabel: 'Mês Selecionado'
+                    subLabel: 'Acumulado do Mês'
                 };
         }
     }, [activeFilter, currentDate]);
@@ -148,7 +148,7 @@ export default function CourierEarningsPage() {
                         <ArrowLeft />
                     </Link>
                 </Button>
-                <h1 className="text-lg font-bold tracking-tight font-headline">Histórico de Ganhos</h1>
+                <h1 className="text-lg font-bold tracking-tight font-headline">Extrato de Ganhos</h1>
                 <Button variant="ghost" size="icon" className="rounded-full" onClick={handleResetDate}>
                     <Calendar className={cn(format(currentDate, 'yyyy-MM-dd') !== format(new Date(), 'yyyy-MM-dd') && "text-primary")} />
                 </Button>
@@ -158,62 +158,66 @@ export default function CourierEarningsPage() {
                 {/* Filtros Rápidos */}
                 <div className="mt-4 flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     {filterButtons.map(({ label, type }) => (
-                         <Button 
+                         <button 
                             key={type}
-                            className={cn(
-                                "whitespace-nowrap rounded-full px-5 h-10 font-bold",
-                                activeFilter === type ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                            )}
-                            variant="ghost" 
-                            size="sm"
                             onClick={() => {
                                 setActiveFilter(type);
                                 setCurrentDate(new Date());
                             }}
+                            className={cn(
+                                "whitespace-nowrap rounded-full px-5 h-10 text-sm font-bold transition-all",
+                                activeFilter === type 
+                                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' 
+                                    : 'bg-muted text-muted-foreground'
+                            )}
                         >
                             {label}
-                        </Button>
+                        </button>
                     ))}
                 </div>
 
                 {/* Seletor de Período */}
                 <section className="mt-4">
-                    <Card className="p-3 bg-muted/50 border shadow-none rounded-2xl">
+                    <Card className="p-3 bg-card border shadow-sm rounded-2xl">
                         <div className="flex items-center justify-between">
-                            <Button variant="ghost" size="icon" onClick={handlePrev} className="rounded-full hover:bg-background">
+                            <Button variant="ghost" size="icon" onClick={handlePrev} className="rounded-full hover:bg-muted">
                                 <ChevronLeft className="size-5" />
                             </Button>
                             <div className="text-center">
                                 <p className="text-sm font-bold text-foreground">{periodLabel}</p>
                                 <p className="text-[10px] uppercase font-black text-primary tracking-widest leading-none mt-0.5">{subLabel}</p>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={handleNext} className="rounded-full hover:bg-background">
+                            <Button variant="ghost" size="icon" onClick={handleNext} className="rounded-full hover:bg-muted">
                                 <ChevronRight className="size-5" />
                             </Button>
                         </div>
                     </Card>
                 </section>
 
-                {/* Card de Valor Total */}
-                <div className="mt-4 p-8 rounded-[2rem] bg-primary/5 border border-primary/10 flex flex-col items-center text-center shadow-sm">
-                    <p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">Total Ganho no Período</p>
+                {/* Card de Valor Total (Repasse estipulado por entrega para o Motoboy) */}
+                <div className="mt-4 p-8 rounded-[2rem] bg-primary text-primary-foreground flex flex-col items-center text-center shadow-xl shadow-primary/20 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -mr-8 -mt-8 opacity-10">
+                        <Banknote size={160} />
+                    </div>
+                    
+                    <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Valor Total a Receber</p>
                     {isLoading ? (
-                        <Skeleton className="h-10 w-48 my-1" />
+                        <Skeleton className="h-10 w-48 my-1 bg-white/20" />
                     ) : (
-                        <h2 className="text-4xl font-black text-foreground tracking-tight mb-1 font-headline">
+                        <h2 className="text-4xl font-black tracking-tight mb-1 font-headline">
                             {totalEarnings.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </h2>
                     )}
-                    <div className="mt-3 flex items-center gap-1.5 bg-background px-3 py-1 rounded-full border border-primary/10 shadow-sm">
-                        <Wallet className="size-3 text-primary" />
-                        <span className="text-[10px] font-black text-muted-foreground uppercase">{deliveries?.length || 0} entregas feitas</span>
+                    <div className="mt-3 flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full backdrop-blur-md">
+                        <CheckCircle className="size-3" />
+                        <span className="text-[10px] font-black uppercase">{deliveries?.length || 0} Entregas no Período</span>
                     </div>
                 </div>
 
                 {/* Lista de Entregas */}
                 <div className="mt-8 space-y-4">
                     <div className="flex items-center justify-between mb-2 px-1">
-                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest font-headline">Lista Detalhada</h3>
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest font-headline">Detalhes das Corridas</h3>
                     </div>
 
                     <div className="space-y-3">
@@ -235,7 +239,7 @@ export default function CourierEarningsPage() {
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Seu Ganho</p>
+                                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Seu Repasse</p>
                                             <p className="text-lg font-black text-primary leading-none">+{delivery.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                                         </div>
                                     </div>
@@ -245,7 +249,7 @@ export default function CourierEarningsPage() {
                             <div className="text-center py-16 border-2 border-dashed rounded-[2rem] bg-muted/20">
                                 <Wallet className="mx-auto text-muted-foreground/20 size-16 mb-4" />
                                 <p className="font-bold text-muted-foreground">Nenhum ganho registrado</p>
-                                <p className="text-xs text-muted-foreground/60 mt-1 px-8">Navegue entre as datas para visualizar o histórico de períodos passados.</p>
+                                <p className="text-xs text-muted-foreground/60 mt-1 px-8">As entregas finalizadas no período selecionado aparecerão aqui.</p>
                             </div>
                         )}
                     </div>
