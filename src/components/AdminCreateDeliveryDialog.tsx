@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -148,7 +147,7 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
         variant: "destructive" 
       });
     } finally {
-      setIsSubmitting(true);
+      setIsSubmitting(false);
     }
   };
 
