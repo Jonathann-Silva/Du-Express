@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Wallet, CheckCircle2, AlertCircle, Loader2, Info, Banknote, ChevronRight } from 'lucide-react';
+import { ArrowLeft, CreditCard, Wallet, CheckCircle2, AlertCircle, Loader2, Info, Banknote, ChevronRight, AlertTriangle, Calendar, Ban } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,10 +9,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, doc, writeBatch, serverTimestamp, orderBy, limit } from 'firebase/firestore';
 import type { Delivery } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, startOfWeek, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { cn, checkClientBlockStatus } from '@/lib/utils';
 
 export default function ClientFinancePage() {
   const { user, userProfile, loading: userLoading } = useUser();
@@ -39,9 +38,25 @@ export default function ClientFinancePage() {
     return deliveries?.filter(d => !d.paidByClient) || [];
   }, [deliveries]);
 
-  const totalDebt = useMemo(() => {
-    return unpaidDeliveries.reduce((sum, d) => sum + d.price, 0);
+  const blockStatus = useMemo(() => checkClientBlockStatus(unpaidDeliveries), [unpaidDeliveries]);
+
+  const { currentWeekAmount, previousWeeksAmount } = useMemo(() => {
+    const now = new Date();
+    const currentMonday = startOfWeek(now, { weekStartsOn: 1 });
+    currentMonday.setHours(0, 0, 0, 0);
+
+    return unpaidDeliveries.reduce((acc, d) => {
+        const deliveryDate = d.createdAt.toDate();
+        if (isBefore(deliveryDate, currentMonday)) {
+            acc.previousWeeksAmount += d.price;
+        } else {
+            acc.currentWeekAmount += d.price;
+        }
+        return acc;
+    }, { currentWeekAmount: 0, previousWeeksAmount: 0 });
   }, [unpaidDeliveries]);
+
+  const totalDebt = currentWeekAmount + previousWeeksAmount;
 
   const handlePayDeliveries = async () => {
     if (!firestore || unpaidDeliveries.length === 0) return;
@@ -49,9 +64,6 @@ export default function ClientFinancePage() {
     setIsUpdating(true);
     
     // SIMULAÇÃO DE MERCADO PAGO
-    // Em produção, aqui você chamaria sua API para criar uma Preference ID
-    // e abriria o checkout.
-    
     setTimeout(async () => {
         const batch = writeBatch(firestore);
         
@@ -63,7 +75,7 @@ export default function ClientFinancePage() {
         // Notifica o Admin
         const notifRef = doc(collection(firestore, 'notifications'));
         batch.set(notifRef, {
-            userId: 'admin', // Aqui você buscaria os IDs dos admins reais
+            userId: 'admin', // Idealmente buscaria os IDs dos admins reais
             title: 'Pagamento Recebido!',
             description: `${userProfile?.displayName} realizou o pagamento de R$ ${totalDebt.toFixed(2)}.`,
             createdAt: serverTimestamp(),
@@ -101,30 +113,49 @@ export default function ClientFinancePage() {
       <main className="flex-1 p-4 overflow-y-auto pb-32">
         
         {/* Resumo de Dívida */}
-        <section className="mb-8">
+        <section className="mb-6">
             <Card className={cn(
-                "p-6 border-none shadow-xl transition-all",
-                totalDebt > 0 ? "bg-amber-500 text-white" : "bg-emerald-500 text-white"
+                "p-6 border-none shadow-xl transition-all relative overflow-hidden",
+                blockStatus.isBlocked ? "bg-destructive text-destructive-foreground" : (totalDebt > 0 ? "bg-amber-500 text-white" : "bg-emerald-500 text-white")
             )}>
                 <div className="flex justify-between items-start mb-4">
                     <div className="p-3 rounded-2xl bg-white/20">
-                        {totalDebt > 0 ? <AlertCircle className="size-6" /> : <CheckCircle2 className="size-6" />}
+                        {blockStatus.isBlocked ? <Ban className="size-6" /> : (totalDebt > 0 ? <AlertCircle className="size-6" /> : <CheckCircle2 className="size-6" />)}
                     </div>
-                    <Badge className="bg-white/20 text-white border-none">STATUS ATUAL</Badge>
+                    <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-1 rounded">
+                        {blockStatus.isBlocked ? "ACESSO BLOQUEADO" : "STATUS ATUAL"}
+                    </span>
                 </div>
-                <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Saldo Devedor</p>
+                <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Saldo Total Devedor</p>
                 {isLoading ? <Skeleton className="h-10 w-32 bg-white/20 mt-1" /> : (
                     <h2 className="text-4xl font-black mt-1">
                         {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </h2>
                 )}
-                <p className="text-xs mt-4 opacity-70 leading-tight">
-                    {totalDebt > 0 
-                        ? `${unpaidDeliveries.length} entregas aguardando pagamento para a central.` 
-                        : "Tudo em dia! Você não possui faturas pendentes."}
-                </p>
+                
+                {blockStatus.isBlocked && (
+                    <div className="mt-4 p-3 bg-black/10 rounded-xl">
+                        <p className="text-[10px] font-bold leading-tight">O prazo de pagamento da semana anterior venceu na quarta-feira. Realize o acerto agora para desbloquear sua conta.</p>
+                    </div>
+                )}
             </Card>
         </section>
+
+        {/* Detalhamento por Ciclo */}
+        {totalDebt > 0 && (
+            <section className="mb-8 grid grid-cols-2 gap-3">
+                <Card className="p-4 bg-muted/50 border-none shadow-sm">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Semana Atual</p>
+                    <p className="text-lg font-black text-foreground">{currentWeekAmount.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                    <p className="text-[9px] text-muted-foreground mt-1">Vence na próxima quarta</p>
+                </Card>
+                <Card className={cn("p-4 border-none shadow-sm", previousWeeksAmount > 0 ? "bg-destructive/10" : "bg-muted/50")}>
+                    <p className={cn("text-[10px] font-bold uppercase tracking-widest leading-none mb-1", previousWeeksAmount > 0 ? "text-destructive" : "text-muted-foreground")}>Semana Anterior</p>
+                    <p className={cn("text-lg font-black", previousWeeksAmount > 0 ? "text-destructive" : "text-foreground")}>{previousWeeksAmount.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                    <p className="text-[9px] text-muted-foreground mt-1">Vencido {blockStatus.isGracePeriod ? "(Em prazo de graça)" : ""}</p>
+                </Card>
+            </section>
+        )}
 
         {/* Métodos de Pagamento */}
         {totalDebt > 0 && (
@@ -145,7 +176,7 @@ export default function ClientFinancePage() {
                 <div className="flex gap-2 p-3 bg-muted/50 rounded-xl border border-dashed">
                     <Info className="size-4 text-muted-foreground shrink-0 mt-0.5" />
                     <p className="text-[10px] text-muted-foreground leading-tight italic">
-                        O pagamento é processado instantaneamente e libera o limite da sua conta na central Lucas-Expresso.
+                        O ciclo de pagamentos funciona de Segunda a Sábado. O vencimento da semana fechada ocorre toda Quarta-Feira subsequente.
                     </p>
                 </div>
             </section>
@@ -161,25 +192,33 @@ export default function ClientFinancePage() {
                         <Skeleton className="h-20 w-full rounded-xl" />
                     </>
                 ) : deliveries && deliveries.length > 0 ? (
-                    deliveries.map(delivery => (
-                        <Card key={delivery.id} className="p-4 rounded-xl border-l-4 overflow-hidden" style={{ borderLeftColor: delivery.paidByClient ? '#10b981' : '#f59e0b' }}>
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="text-xs font-bold text-muted-foreground uppercase">{format(delivery.createdAt.toDate(), 'dd/MM/yyyy', {locale: ptBR})}</p>
-                                    <h4 className="font-bold text-sm truncate max-w-[180px]">{delivery.dropoff}</h4>
+                    deliveries.map(delivery => {
+                        const isPrevious = isBefore(delivery.createdAt.toDate(), startOfWeek(new Date(), {weekStartsOn: 1}));
+                        return (
+                            <Card key={delivery.id} className="p-4 rounded-xl border-l-4 overflow-hidden" style={{ borderLeftColor: delivery.paidByClient ? '#10b981' : (isPrevious ? '#ef4444' : '#f59e0b') }}>
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-xs font-bold text-muted-foreground uppercase">{format(delivery.createdAt.toDate(), 'dd/MM/yyyy', {locale: ptBR})}</p>
+                                            {isPrevious && !delivery.paidByClient && (
+                                                <span className="text-[8px] font-black bg-destructive/10 text-destructive px-1 rounded uppercase">Vencido</span>
+                                            )}
+                                        </div>
+                                        <h4 className="font-bold text-sm truncate max-w-[180px]">{delivery.dropoff}</h4>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-black text-base">{delivery.price.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                                        <span className={cn(
+                                            "text-[9px] font-black uppercase px-1.5 py-0.5 rounded",
+                                            delivery.paidByClient ? "bg-emerald-100 text-emerald-700" : (isPrevious ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700")
+                                        )}>
+                                            {delivery.paidByClient ? 'Pago' : 'Pendente'}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="font-black text-base">{delivery.price.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
-                                    <span className={cn(
-                                        "text-[9px] font-black uppercase px-1.5 py-0.5 rounded",
-                                        delivery.paidByClient ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                                    )}>
-                                        {delivery.paidByClient ? 'Pago' : 'Pendente'}
-                                    </span>
-                                </div>
-                            </div>
-                        </Card>
-                    ))
+                            </Card>
+                        )
+                    })
                 ) : (
                     <div className="text-center py-10 border-2 border-dashed rounded-3xl">
                         <Banknote className="size-10 text-muted-foreground/20 mx-auto mb-2" />
@@ -191,12 +230,4 @@ export default function ClientFinancePage() {
       </main>
     </div>
   );
-}
-
-function Badge({ children, className }: { children: React.ReactNode, className?: string }) {
-    return (
-        <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight border", className)}>
-            {children}
-        </span>
-    )
 }

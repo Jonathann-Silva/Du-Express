@@ -1,14 +1,13 @@
-
 'use client';
 
-import { ArrowLeft, User, Wallet, Map, ArrowRight, Loader2, CircleDot, Building, MapPin } from "lucide-react";
+import { ArrowLeft, User, Wallet, Map, ArrowRight, Loader2, CircleDot, Building, MapPin, AlertCircle, Ban } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useUser, useFirestore } from "@/firebase";
+import { useUser, useFirestore, useCollection } from "@/firebase";
 import { collection, addDoc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -17,7 +16,8 @@ import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { cn } from "@/lib/utils";
+import { cn, checkClientBlockStatus } from "@/lib/utils";
+import type { Delivery } from "@/lib/types";
 
 
 export default function RequestDeliveryPage() {
@@ -27,6 +27,23 @@ export default function RequestDeliveryPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
+
+  // Busca faturas para verificar bloqueio
+  const deliveriesQuery = useMemo(() => {
+    if (!firestore || !user?.uid) return null;
+    return query(
+      collection(firestore, 'deliveries'),
+      where('clientId', '==', user.uid),
+      where('status', '==', 'finished'),
+      where('paidByClient', '==', false)
+    );
+  }, [firestore, user?.uid]);
+
+  const { data: unpaidDeliveries, loading: loadingUnpaid } = useCollection<Delivery>(deliveriesQuery);
+
+  const blockStatus = useMemo(() => {
+    return checkClientBlockStatus(unpaidDeliveries || []);
+  }, [unpaidDeliveries]);
 
   const rates = useMemo(() => {
     if (!userProfile) return [];
@@ -51,6 +68,15 @@ export default function RequestDeliveryPage() {
 
   const handleRequest = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (blockStatus.isBlocked) {
+        toast({
+            variant: "destructive",
+            title: "Conta Bloqueada",
+            description: "Você possui pendências financeiras da semana anterior. Por favor, regularize seu saldo.",
+        });
+        return;
+    }
+
     if (!user || !userProfile || !firestore) {
       toast({
         variant: "destructive",
@@ -107,6 +133,7 @@ export default function RequestDeliveryPage() {
       clientId: user.uid,
       createdAt: serverTimestamp(),
       observations: observations,
+      paidByClient: false
     };
 
     const deliveriesCollectionRef = collection(firestore, "deliveries");
@@ -173,6 +200,33 @@ export default function RequestDeliveryPage() {
         setIsSubmitting(false);
       });
   };
+
+  if (blockStatus.isBlocked) {
+    return (
+        <div className="flex flex-col h-full bg-background items-center justify-center p-8 text-center">
+            <div className="size-24 rounded-full bg-destructive/10 flex items-center justify-center mb-6">
+                <Ban className="size-12 text-destructive" />
+            </div>
+            <h2 className="text-2xl font-black font-headline text-foreground">Solicitações Bloqueadas</h2>
+            <p className="text-muted-foreground mt-4 leading-tight">
+                Você possui pendências financeiras da semana anterior que venceram na última quarta-feira.
+            </p>
+            <div className="w-full mt-8 p-4 bg-muted/50 rounded-2xl border border-dashed text-left">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Resumo da Dívida</p>
+                <div className="flex justify-between items-baseline">
+                    <span className="text-sm font-medium">Valor em aberto:</span>
+                    <span className="text-xl font-black text-destructive">{blockStatus.debtAmount?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+            </div>
+            <Button asChild className="w-full mt-8 py-7 rounded-2xl text-base font-bold shadow-xl shadow-primary/20">
+                <Link href="/client/finance">Ir para Pagamento</Link>
+            </Button>
+            <Button asChild variant="ghost" className="mt-2 w-full">
+                <Link href="/client">Voltar ao Início</Link>
+            </Button>
+        </div>
+    );
+  }
 
   return (
     <>
@@ -279,7 +333,7 @@ export default function RequestDeliveryPage() {
           </section>
 
           <div className="pt-4">
-            <Button type="submit" disabled={isSubmitting || userLoading || selectedPrice === null} className="w-full py-6 text-base font-bold rounded-xl">
+            <Button type="submit" disabled={isSubmitting || userLoading || selectedPrice === null || blockStatus.isBlocked} className="w-full py-6 text-base font-bold rounded-xl">
                 {isSubmitting ? <Loader2 className="animate-spin" /> : 'Confirmar Solicitação de Entrega'}
                 {!isSubmitting && <ArrowRight className="size-5 ml-2" />}
             </Button>

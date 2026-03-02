@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
-import { CheckCircle, Package, Plus, Timer, XCircle, ShieldCheck } from 'lucide-react';
+import { useMemo, useEffect, useState } from 'react';
+import { CheckCircle, Package, Plus, Timer, XCircle, ShieldCheck, AlertOctagon, CreditCard, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -16,7 +16,7 @@ import { useUser, useFirestore, useCollection, useDoc } from '@/firebase';
 import type { Delivery, AppStatus } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CourierName } from '@/components/info/CourierName';
-import { cn } from '@/lib/utils';
+import { cn, checkClientBlockStatus } from '@/lib/utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -54,6 +54,13 @@ export default function ClientHomePage() {
   const { data: inProgressDeliveries, loading: loadingInProgress } = useCollection<Delivery>(inProgressQuery);
   const { data: pendingDeliveries, loading: loadingPending } = useCollection<Delivery>(pendingQuery);
   const { data: allDeliveries, loading: loadingRecent } = useCollection<Delivery>(allDeliveriesQuery);
+
+  // Lógica de Bloqueio Financeiro
+  const unpaidDeliveries = useMemo(() => {
+    return allDeliveries?.filter(d => d.status === 'finished' && !d.paidByClient) || [];
+  }, [allDeliveries]);
+
+  const blockStatus = useMemo(() => checkClientBlockStatus(unpaidDeliveries), [unpaidDeliveries]);
 
   // Lógica de cancelamento automático por tempo para o Cliente
   useEffect(() => {
@@ -114,6 +121,46 @@ export default function ClientHomePage() {
       </header>
 
       <main className="flex-1 overflow-y-auto pb-24">
+        
+        {/* Banner de Bloqueio ou Aviso Financeiro */}
+        {!isLoading && blockStatus.isBlocked && (
+          <section className="px-6 py-2">
+            <Link href="/client/finance">
+              <Card className="bg-destructive border-none shadow-lg text-destructive-foreground overflow-hidden">
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="size-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                    <AlertOctagon className="size-6" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-black uppercase tracking-tight leading-none">Acesso Bloqueado</p>
+                    <p className="text-[10px] opacity-90 mt-1">O prazo de pagamento venceu. Regularize seu saldo para solicitar novas entregas.</p>
+                  </div>
+                  <ChevronRight className="size-5 opacity-50" />
+                </CardContent>
+              </Card>
+            </Link>
+          </section>
+        )}
+
+        {!isLoading && !blockStatus.isBlocked && blockStatus.isGracePeriod && blockStatus.hasDebt && (
+          <section className="px-6 py-2">
+            <Link href="/client/finance">
+              <Card className="bg-amber-500 border-none shadow-lg text-white overflow-hidden">
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="size-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                    <CreditCard className="size-6" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-black uppercase tracking-tight leading-none">Aviso de Pagamento</p>
+                    <p className="text-[10px] opacity-90 mt-1">O ciclo semanal fechou. Você tem até quarta-feira para pagar sem bloqueio.</p>
+                  </div>
+                  <ChevronRight className="size-5 opacity-50" />
+                </CardContent>
+              </Card>
+            </Link>
+          </section>
+        )}
+
         {/* Mini Card de Status do Admin */}
         <section className="px-6 py-2">
           <Card className="bg-muted/30 border-none shadow-none rounded-xl overflow-hidden">
@@ -167,12 +214,15 @@ export default function ClientHomePage() {
         </section>
 
         <section className="px-6 py-4">
-          <Button asChild className="w-full font-bold py-6 rounded-xl text-base">
-            <Link href="/client/request">
+          <Button asChild className="w-full font-bold py-6 rounded-xl text-base" disabled={blockStatus.isBlocked}>
+            <Link href={blockStatus.isBlocked ? "#" : "/client/request"}>
               <Plus className="size-5" />
               Solicitar Nova Entrega
             </Link>
           </Button>
+          {blockStatus.isBlocked && (
+            <p className="text-center text-xs text-destructive font-bold mt-2">App bloqueado por pendência financeira.</p>
+          )}
         </section>
         
         <section className="px-6 py-6">
