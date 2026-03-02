@@ -1,11 +1,11 @@
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
-import { CheckCircle, Package, Plus, Timer, XCircle, ShieldCheck, AlertOctagon, CreditCard, ChevronRight, Loader2 } from 'lucide-react';
+import { CheckCircle, Package, Plus, Timer, XCircle, ShieldCheck, AlertOctagon, CreditCard, ChevronRight, Loader2, X } from 'lucide-react';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +19,17 @@ import { CourierName } from '@/components/info/CourierName';
 import { cn, checkClientBlockStatus } from '@/lib/utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const TIMEOUT_MINUTES = 20;
 const TIMEOUT_MS = TIMEOUT_MINUTES * 60 * 1000;
@@ -26,6 +37,9 @@ const TIMEOUT_MS = TIMEOUT_MINUTES * 60 * 1000;
 export default function ClientHomePage() {
   const { user, userProfile, loading: userLoading } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
+  const [deliveryToCancel, setDeliveryToCancel] = useState<Delivery | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Status do Admin
   const statusDocRef = useMemo(() => {
@@ -99,6 +113,38 @@ export default function ClientHomePage() {
       .slice(0, 3);
   }, [allDeliveries]);
 
+  const handleCancelDelivery = async () => {
+    if (!firestore || !deliveryToCancel) return;
+    
+    setIsCancelling(true);
+    const docRef = doc(firestore, 'deliveries', deliveryToCancel.id);
+    const updateData = { 
+      status: 'refused',
+      observations: 'Cancelado pelo cliente.'
+    };
+
+    try {
+      await updateDoc(docRef, updateData);
+      toast({
+        title: "Pedido Cancelado",
+        description: "Sua solicitação de entrega foi removida.",
+      });
+      setDeliveryToCancel(null);
+    } catch (serverError: any) {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+        requestResourceData: updateData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      toast({
+        title: "Erro ao cancelar",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   const isLoading = userLoading || loadingInProgress || loadingPending || loadingRecent;
   
@@ -258,7 +304,7 @@ export default function ClientHomePage() {
               </>
             )}
             {!isLoading && recentDeliveries?.map(order => (
-              <RecentOrderCard key={order.id} delivery={order} />
+              <RecentOrderCard key={order.id} delivery={order} onCancel={setDeliveryToCancel} />
             ))}
             {!isLoading && (!recentDeliveries || recentDeliveries.length === 0) && (
               <div className="text-center py-10 border rounded-2xl">
@@ -269,6 +315,30 @@ export default function ClientHomePage() {
           </div>
         </section>
       </main>
+
+      <AlertDialog open={!!deliveryToCancel} onOpenChange={(open) => !open && setDeliveryToCancel(null)}>
+        <AlertDialogContent className="rounded-3xl max-w-[90vw]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar Pedido?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem certeza que deseja cancelar esta entrega? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel className="rounded-xl" disabled={isCancelling}>Voltar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleCancelDelivery();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold"
+              disabled={isCancelling}
+            >
+              {isCancelling ? <Loader2 className="animate-spin size-4" /> : 'Confirmar Cancelamento'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -282,10 +352,11 @@ const statusConfig = {
 };
 
 
-function RecentOrderCard({ delivery }: { delivery: Delivery }) {
+function RecentOrderCard({ delivery, onCancel }: { delivery: Delivery, onCancel?: (delivery: Delivery) => void }) {
   const currentStatus = statusConfig[delivery.status] || statusConfig.pending;
   const isFinished = delivery.status === 'finished';
   const isRefused = delivery.status === 'refused';
+  const isPending = delivery.status === 'pending';
   
   const timeText = isFinished && delivery.finishedAt 
     ? formatDistanceToNow(delivery.finishedAt.toDate(), { addSuffix: true, locale: ptBR })
@@ -301,7 +372,7 @@ function RecentOrderCard({ delivery }: { delivery: Delivery }) {
   const isTimeOutCancellation = isRefused && delivery.observations?.includes('20 minutos');
 
   return (
-    <Card className="p-4 rounded-xl">
+    <Card className="p-4 rounded-xl relative overflow-hidden">
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-3">
           <div className={cn('size-10 rounded-lg flex items-center justify-center', currentStatus.className)}>
@@ -311,8 +382,20 @@ function RecentOrderCard({ delivery }: { delivery: Delivery }) {
             <h4 className="font-bold text-sm font-headline max-w-[150px] truncate">{delivery.dropoff}</h4>
           </div>
         </div>
-        <div className={cn('px-2 py-1 rounded text-[10px] font-bold', currentStatus.className)}>
-          {currentStatus.label}
+        <div className="flex flex-col items-end gap-2">
+          <div className={cn('px-2 py-1 rounded text-[10px] font-bold', currentStatus.className)}>
+            {currentStatus.label}
+          </div>
+          {isPending && !delivery.courierId && (
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="size-7 rounded-full text-destructive border-destructive/20 hover:bg-destructive/10"
+              onClick={() => onCancel?.(delivery)}
+            >
+              <X className="size-4" />
+            </Button>
+          )}
         </div>
       </div>
       <Separator className="my-3"/>
@@ -337,7 +420,7 @@ function RecentOrderCard({ delivery }: { delivery: Delivery }) {
                     {delivery.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                    </span>
                 )}
-                {!delivery.courierId && !isFinished && (
+                {!delivery.courierId && !isFinished && !isRefused && (
                   <span className="text-muted-foreground italic">Aguardando entregador...</span>
                 )}
               </>
