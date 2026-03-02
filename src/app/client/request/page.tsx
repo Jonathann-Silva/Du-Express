@@ -31,25 +31,27 @@ export default function RequestDeliveryPage() {
   const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
 
-  // States para detecção automática de endereço
   const [dropoffStreet, setDropoffStreet] = useState("");
   const [dropoffNumber, setDropoffNumber] = useState("");
 
-  // Busca faturas para verificar bloqueio
+  // Busca faturas para verificar bloqueio (Sempre busca todas as finalizadas para garantir inclusão de missing fields)
   const deliveriesQuery = useMemo(() => {
     if (!firestore || !user?.uid) return null;
     return query(
       collection(firestore, 'deliveries'),
       where('clientId', '==', user.uid),
-      where('status', '==', 'finished'),
-      where('paidByClient', '==', false)
+      where('status', '==', 'finished')
     );
   }, [firestore, user?.uid]);
 
-  const { data: unpaidDeliveries, loading: loadingUnpaid } = useCollection<Delivery>(deliveriesQuery);
+  const { data: finishedDeliveries, loading: loadingUnpaid } = useCollection<Delivery>(deliveriesQuery);
+
+  const unpaidDeliveries = useMemo(() => {
+    return finishedDeliveries?.filter(d => d.paidByClient === false || d.paidByClient === undefined) || [];
+  }, [finishedDeliveries]);
 
   const blockStatus = useMemo(() => {
-    return checkClientBlockStatus(unpaidDeliveries || []);
+    return checkClientBlockStatus(unpaidDeliveries);
   }, [unpaidDeliveries]);
 
   const rates = useMemo(() => {
@@ -106,7 +108,7 @@ export default function RequestDeliveryPage() {
   const handleRequest = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (blockStatus.isBlocked) {
-        toast({ variant: "destructive", title: "Conta Bloqueada", description: "Você possui pendências financeiras. Regularize seu saldo." });
+        toast({ variant: "destructive", title: "Conta Bloqueada", description: "Você possui pendências vencidas. Regularize seu saldo." });
         return;
     }
     if (!user || !userProfile || !firestore) return;
@@ -134,7 +136,7 @@ export default function RequestDeliveryPage() {
       clientId: user.uid,
       createdAt: serverTimestamp(),
       observations: observations || "",
-      paidByClient: paymentMethod === 'collect', // "Receber" já conta como liquidado pela loja
+      paidByClient: paymentMethod === 'collect', 
       paymentMethod: paymentMethod
     };
 
@@ -152,17 +154,17 @@ export default function RequestDeliveryPage() {
 
   if (blockStatus.isBlocked) {
     return (
-        <div className="flex flex-col h-full bg-background items-center justify-center p-8 text-center">
+        <div className="flex flex-col h-full bg-background items-center justify-center p-8 text-center outline-none">
             <div className="size-24 rounded-full bg-destructive/10 flex items-center justify-center mb-6"><AlertCircle className="size-12 text-destructive" /></div>
             <h2 className="text-2xl font-black font-headline">Acesso Bloqueado</h2>
-            <p className="text-muted-foreground mt-4">Regularize sua pendência de {blockStatus.debtAmount?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} para continuar.</p>
+            <p className="text-muted-foreground mt-4">Regularize sua pendência de {blockStatus.debtAmount?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} para voltar a solicitar entregas.</p>
             <Button asChild className="w-full mt-8 py-7 rounded-2xl font-bold shadow-xl"><Link href="/client/finance">Ir para Pagamento</Link></Button>
         </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background outline-none">
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md px-4 py-4 border-b flex items-center justify-between">
         <Button variant="ghost" size="icon" asChild><Link href="/client"><ArrowLeft /></Link></Button>
         <h1 className="text-lg font-semibold tracking-tight font-headline">Nova Entrega</h1>
@@ -172,7 +174,7 @@ export default function RequestDeliveryPage() {
         </Avatar>
       </header>
 
-      <main className="flex-1 overflow-y-auto pb-32">
+      <main className="flex-1 overflow-y-auto pb-32 outline-none">
         <form onSubmit={handleRequest} className="px-4 py-6 space-y-8 max-w-md mx-auto">
           <section className="space-y-4">
             <div className="flex items-center justify-between px-1">

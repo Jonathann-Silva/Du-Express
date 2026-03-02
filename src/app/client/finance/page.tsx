@@ -35,7 +35,6 @@ export default function ClientFinancePage() {
   const { weekStart, weekEnd, periodLabel } = useMemo(() => {
     const reference = new Date(currentDate);
     const day = getDay(reference);
-    // Se for domingo (0), volta para sábado para calcular a semana correta do ciclo
     const dateForCalc = day === 0 ? subDays(reference, 1) : reference;
     const start = startOfWeek(dateForCalc, { weekStartsOn: 1 });
     start.setHours(0, 0, 0, 0);
@@ -53,18 +52,22 @@ export default function ClientFinancePage() {
   const handlePrevWeek = () => setCurrentDate(prev => subWeeks(prev, 1));
   const handleNextWeek = () => setCurrentDate(prev => addWeeks(prev, 1));
 
-  // 1. Busca TODAS as entregas não pagas para o cálculo de bloqueio (Independente da semana selecionada)
-  const allUnpaidQuery = useMemo(() => {
+  // 1. Busca TODAS as entregas finalizadas para o cálculo de bloqueio
+  // Removido o filtro 'paidByClient == false' da query para ser mais robusto com dados antigos/missing
+  const allDeliveriesQuery = useMemo(() => {
     if (!firestore || !user?.uid) return null;
     return query(
       collection(firestore, 'deliveries'),
       where('clientId', '==', user.uid),
-      where('status', '==', 'finished'),
-      where('paidByClient', '==', false)
+      where('status', '==', 'finished')
     );
   }, [firestore, user?.uid]);
 
-  const { data: allUnpaidDeliveries } = useCollection<Delivery>(allUnpaidQuery);
+  const { data: allFinishedDeliveries } = useCollection<Delivery>(allDeliveriesQuery);
+
+  const unpaidDeliveries = useMemo(() => {
+    return allFinishedDeliveries?.filter(d => d.paidByClient === false || d.paidByClient === undefined) || [];
+  }, [allFinishedDeliveries]);
 
   // 2. Busca as entregas da SEMANA SELECIONADA para exibição na lista
   const weeklyDeliveriesQuery = useMemo(() => {
@@ -82,18 +85,16 @@ export default function ClientFinancePage() {
 
   const { data: weeklyDeliveries, loading: loadingDeliveries } = useCollection<Delivery>(weeklyDeliveriesQuery);
 
-  const blockStatus = useMemo(() => checkClientBlockStatus(allUnpaidDeliveries || []), [allUnpaidDeliveries]);
+  const blockStatus = useMemo(() => checkClientBlockStatus(unpaidDeliveries), [unpaidDeliveries]);
 
   // Verifica se o período selecionado está vencido (Prazo: Quarta da semana seguinte)
   const isPeriodExpired = useMemo(() => {
-    // Vencimento ocorre na quarta-feira (dia 3) da semana seguinte.
-    // weekStart é Segunda. Segunda + 9 dias = Quarta da semana seguinte.
     const deadline = addDays(weekStart, 9); 
     deadline.setHours(23, 59, 59, 999);
     return isBefore(deadline, new Date());
   }, [weekStart]);
 
-  // Cálculos baseados na semana selecionada para o resumo visual
+  // Cálculos baseados na semana selecionada
   const stats = useMemo(() => {
     if (!weeklyDeliveries) return { totalWeek: 0, paidWeek: 0, unpaidWeek: 0 };
     return weeklyDeliveries.reduce((acc, d) => {
@@ -104,26 +105,23 @@ export default function ClientFinancePage() {
     }, { totalWeek: 0, paidWeek: 0, unpaidWeek: 0 });
   }, [weeklyDeliveries]);
 
-  // Débito total para o QR Code (Soma de tudo que deve, não só da semana)
   const totalDebt = useMemo(() => {
-    return allUnpaidDeliveries?.reduce((sum, d) => sum + (d.price || 0), 0) || 0;
-  }, [allUnpaidDeliveries]);
+    return unpaidDeliveries.reduce((sum, d) => sum + (d.price || 0), 0);
+  }, [unpaidDeliveries]);
 
   const handlePayDeliveries = async () => {
-    if (!firestore || !allUnpaidDeliveries || allUnpaidDeliveries.length === 0) return;
+    if (!firestore || unpaidDeliveries.length === 0) return;
     
     setIsUpdating(true);
     
-    // SIMULAÇÃO DE MERCADO PAGO (PIX)
     setTimeout(async () => {
         const batch = writeBatch(firestore);
         
-        allUnpaidDeliveries.forEach(delivery => {
+        unpaidDeliveries.forEach(delivery => {
             const dRef = doc(firestore, 'deliveries', delivery.id);
             batch.update(dRef, { paidByClient: true });
         });
 
-        // Notifica o Admin
         const notifRef = doc(collection(firestore, 'notifications'));
         batch.set(notifRef, {
             userId: 'admin', 
@@ -138,7 +136,7 @@ export default function ClientFinancePage() {
             await batch.commit();
             toast({
                 title: "Pagamento Confirmado!",
-                description: "Obrigado! Suas entregas foram marcadas como pagas no sistema.",
+                description: "Obrigado! Suas entregas foram marcadas como pagas.",
             });
             setIsQRCodeOpen(false);
         } catch (e) {
@@ -151,17 +149,17 @@ export default function ClientFinancePage() {
 
   const isLoading = userLoading || loadingDeliveries;
 
-  // Determina a cor e o rótulo do card baseado no status da semana selecionada
   const isCurrentlyInDebtInPeriod = stats.unpaidWeek > 0;
   const cardStatus = useMemo(() => {
-    if (isCurrentlyInDebtInPeriod && isPeriodExpired) {
+    // Se a semana está vencida E tem dívida nela, ou se o app está bloqueado globalmente
+    if ((isCurrentlyInDebtInPeriod && isPeriodExpired) || (blockStatus.isBlocked && totalDebt > 0)) {
         return { color: "bg-destructive text-white", label: "PAGAMENTO VENCIDO", icon: <Ban className="size-6" /> };
     }
     if (isCurrentlyInDebtInPeriod) {
         return { color: "bg-amber-500 text-white", label: "SALDO DA SEMANA", icon: <AlertCircle className="size-6" /> };
     }
     return { color: "bg-emerald-500 text-white", label: "CICLO LIQUIDADO", icon: <CheckCircle2 className="size-6" /> };
-  }, [isCurrentlyInDebtInPeriod, isPeriodExpired]);
+  }, [isCurrentlyInDebtInPeriod, isPeriodExpired, blockStatus.isBlocked, totalDebt]);
 
   return (
     <div className="flex flex-col h-full bg-background outline-none">
@@ -176,7 +174,6 @@ export default function ClientFinancePage() {
 
       <main className="flex-1 p-4 overflow-y-auto pb-32 outline-none">
         
-        {/* Filtro de Semana - No Topo */}
         <section className="mb-6">
             <Card className="p-2 bg-muted/50 border shadow-sm rounded-2xl flex items-center justify-between">
                 <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="rounded-xl h-12 w-12" disabled={isLoading}>
@@ -192,7 +189,6 @@ export default function ClientFinancePage() {
             </Card>
         </section>
 
-        {/* Resumo de Dívida Dinâmico (Filtro da Semana) */}
         <section className="mb-6">
             <Card className={cn(
                 "p-6 border-none shadow-xl transition-all relative overflow-hidden",
@@ -213,12 +209,11 @@ export default function ClientFinancePage() {
                     </h2>
                 )}
                 
-                {/* Informação de Débito Acumulado (apenas se houver bloqueio ou dívida total maior que a da semana) */}
                 {(blockStatus.isBlocked || (totalDebt > stats.unpaidWeek)) && (
                     <div className="mt-4 p-3 bg-black/10 rounded-xl">
                         <p className="text-[10px] font-bold leading-tight">
                             {blockStatus.isBlocked 
-                                ? "Você possui débitos de ciclos anteriores. Regularize o total acumulado para desbloquear seu acesso."
+                                ? "ACESSO BLOQUEADO: Você possui débitos vencidos. Regularize o total acumulado para voltar a pedir."
                                 : "Existem pendências financeiras em outros períodos."}
                             <br />
                             <span className="text-xs font-black uppercase">Total Acumulado a Pagar: {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
@@ -228,7 +223,6 @@ export default function ClientFinancePage() {
             </Card>
         </section>
 
-        {/* Detalhamento da Semana Selecionada */}
         <section className="mb-8 grid grid-cols-2 gap-3">
             <Card className="p-4 bg-muted/50 border-none shadow-sm">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Total Período</p>
@@ -244,7 +238,6 @@ export default function ClientFinancePage() {
             </Card>
         </section>
 
-        {/* Métodos de Pagamento (Sempre mostra se houver dívida global) */}
         {totalDebt > 0 && (
             <section className="mb-8 space-y-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Pagar Total Acumulado</h3>
@@ -263,13 +256,12 @@ export default function ClientFinancePage() {
                 <div className="flex gap-2 p-3 bg-muted/50 rounded-xl border border-dashed">
                     <Info className="size-4 text-muted-foreground shrink-0 mt-0.5" />
                     <p className="text-[10px] text-muted-foreground leading-tight italic">
-                        O vencimento da semana fechada ocorre toda Quarta-Feira subsequente. Pagamentos via PIX dão baixa imediata após a confirmação.
+                        O vencimento da semana fechada ocorre toda Quarta-Feira subsequente. Pagamentos via PIX dão baixa imediata.
                     </p>
                 </div>
             </section>
         )}
 
-        {/* Listagem do Período */}
         <section className="space-y-4">
             <div className="flex justify-between items-center px-1">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Lançamentos do Período</h3>
@@ -319,7 +311,6 @@ export default function ClientFinancePage() {
         </section>
       </main>
 
-      {/* Modal de QR Code */}
       <Dialog open={isQRCodeOpen} onOpenChange={setIsQRCodeOpen}>
         <DialogContent className="max-w-[90vw] rounded-[2rem] p-6 overflow-hidden">
           <DialogHeader className="text-center">
@@ -377,7 +368,7 @@ export default function ClientFinancePage() {
           <div className="mt-4 p-3 bg-muted/30 rounded-xl flex gap-3 items-start">
             <Info className="size-4 text-muted-foreground shrink-0 mt-0.5" />
             <p className="text-[10px] text-muted-foreground leading-tight italic">
-              Ao clicar em confirmar, o sistema dará baixa em todas as suas entregas pendentes.
+              O sistema dará baixa em todas as suas entregas pendentes imediatamente após a confirmação.
             </p>
           </div>
         </DialogContent>
