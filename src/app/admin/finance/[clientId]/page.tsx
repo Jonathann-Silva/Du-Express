@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Download, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight, AlertCircle, Banknote } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { FinanceGuard } from "@/components/FinanceGuard";
+import { cn } from '@/lib/utils';
 
 const statusMap: Record<Delivery['status'], { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: 'Pendente', color: 'text-amber-500', icon: <Loader2 className="size-5 animate-spin text-amber-500" /> },
@@ -96,17 +98,20 @@ export default function ClientFinanceDetailsPage() {
     return [...deliveries].sort((a, b) => (b.createdAt as Timestamp).toDate().getTime() - (a.createdAt as Timestamp).toDate().getTime());
   }, [deliveries]);
 
-  const { totalPending, totalReceived, totalFinished } = useMemo(() => {
-    if (!deliveries) return { totalPending: 0, totalReceived: 0, totalFinished: 0 };
+  const { totalPending, totalReceived, totalFinished, totalUnpaidByClient } = useMemo(() => {
+    if (!deliveries) return { totalPending: 0, totalReceived: 0, totalFinished: 0, totalUnpaidByClient: 0 };
     return deliveries.reduce((acc, delivery) => {
       if (delivery.status === 'finished') {
         acc.totalReceived += delivery.price;
         acc.totalFinished += 1;
+        if (!delivery.paidByClient) {
+            acc.totalUnpaidByClient += delivery.price;
+        }
       } else if (delivery.status === 'pending' || delivery.status === 'accepted' || delivery.status === 'in-progress') {
         acc.totalPending += delivery.price;
       }
       return acc;
-    }, { totalPending: 0, totalReceived: 0, totalFinished: 0 });
+    }, { totalPending: 0, totalReceived: 0, totalFinished: 0, totalUnpaidByClient: 0 });
   }, [deliveries]);
 
   const isLoading = userLoading || clientLoading || deliveriesLoading;
@@ -135,7 +140,8 @@ export default function ClientFinanceDetailsPage() {
       'Nome da Loja': client?.displayName || 'N/A',
       'Local da Entrega': d.dropoff,
       'Valor': d.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-      'Status': statusMap[d.status]?.label || d.status
+      'Status': statusMap[d.status]?.label || d.status,
+      'Pago pela Loja?': d.paidByClient ? 'Sim' : 'Não'
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -211,16 +217,22 @@ export default function ClientFinanceDetailsPage() {
         </section>
 
          <section className="grid grid-cols-2 gap-3 mb-6">
-            <Card className="p-4 bg-amber-500/10 border-amber-500/20">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Pendente</p>
+            <Card className="p-4 bg-amber-500/10 border-amber-500/20 relative overflow-hidden">
+                <div className="absolute -right-2 -top-2 opacity-10">
+                    <AlertCircle size={48} />
+                </div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">A Receber (Loja)</p>
                 {isLoading ? <Skeleton className="h-6 w-20 mt-1" /> : (
                     <p className="text-lg font-bold text-amber-500">
-                        {totalPending.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {totalUnpaidByClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </p>
                 )}
             </Card>
-            <Card className="p-4 bg-primary/10 border-primary/20">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Recebido</p>
+            <Card className="p-4 bg-primary/10 border-primary/20 relative overflow-hidden">
+                <div className="absolute -right-2 -top-2 opacity-10">
+                    <CheckCircle size={48} />
+                </div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Total da Semana</p>
                 {isLoading ? <Skeleton className="h-6 w-20 mt-1" /> : (
                     <p className="text-lg font-bold text-primary">
                         {totalReceived.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -231,16 +243,18 @@ export default function ClientFinanceDetailsPage() {
 
         <section>
             <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold">Entregas da Semana</h2>
+                <h2 className="font-bold">Relatório de Cobrança</h2>
                 <span className="text-sm font-medium text-muted-foreground">{deliveries?.length || 0} registros</span>
             </div>
             <div className="space-y-3">
                  {isLoading && Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}
                 {!isLoading && deliveries && sortedDeliveries.map((delivery) => {
-                    // Encontrar o index original para a numeração crescente
                     const originalIndex = deliveries.findIndex(d => d.id === delivery.id);
                     return (
-                        <Card key={delivery.id} className="p-3">
+                        <Card key={delivery.id} className={cn(
+                            "p-3 transition-colors border-l-4",
+                            delivery.paidByClient ? "border-l-emerald-500" : "border-l-amber-500"
+                        )}>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className={`size-10 rounded-full flex items-center justify-center ${statusBgMap[delivery.status]}`}>
@@ -248,7 +262,15 @@ export default function ClientFinanceDetailsPage() {
                                     </div>
                                     <div>
                                         <p className="font-bold text-sm">Pedido {(originalIndex + 1).toString().padStart(3, '0')}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">{format((delivery.createdAt as Timestamp).toDate(), "dd MMM, yyyy 'às' HH:mm", {locale: ptBR})} • <span className={statusMap[delivery.status]?.color}>{statusMap[delivery.status]?.label}</span></p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-[10px] font-black uppercase text-muted-foreground">{format((delivery.createdAt as Timestamp).toDate(), "dd MMM", {locale: ptBR})}</span>
+                                            <span className={cn(
+                                                "text-[9px] font-bold px-1 rounded uppercase",
+                                                delivery.paidByClient ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                                            )}>
+                                                {delivery.paidByClient ? 'Liquidado' : 'Em Aberto'}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -271,14 +293,14 @@ export default function ClientFinanceDetailsPage() {
       <div className="absolute bottom-0 left-0 right-0 z-30 pb-10 px-4 bg-gradient-to-t from-background via-background/80 to-transparent pt-10 pointer-events-none">
         <div className="p-5 rounded-2xl bg-primary text-white shadow-2xl shadow-primary/30 flex items-center justify-between pointer-events-auto">
             <div>
-                <p className="text-[11px] uppercase font-bold tracking-widest opacity-80 mb-1">Total Recebido (Semana)</p>
+                <p className="text-[11px] uppercase font-bold tracking-widest opacity-80 mb-1">A Receber desta Loja</p>
                 <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">{totalReceived.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
+                    <span className="text-3xl font-bold">{totalUnpaidByClient.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
                 </div>
             </div>
             <div className="text-right border-l border-white/20 pl-6">
-                <p className="text-[11px] uppercase font-bold tracking-widest opacity-80 mb-1">Entregas</p>
-                <p className="text-2xl font-black">{totalFinished}</p>
+                <p className="text-[11px] uppercase font-bold tracking-widest opacity-80 mb-1">Pendentes</p>
+                <p className="text-2xl font-black">{unpaidDeliveries.length}</p>
             </div>
         </div>
     </div>

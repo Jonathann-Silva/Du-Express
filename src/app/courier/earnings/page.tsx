@@ -158,6 +158,7 @@ export default function CourierEarningsPage() {
                                         </div>
                                     </div>
                                     <div className="text-right">
+                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-tighter opacity-60">Seu Ganho</p>
                                         <p className="text-base font-bold text-foreground">+{delivery.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                                         <p className="text-[10px] font-bold text-green-500 uppercase tracking-tighter">Finalizado</p>
                                     </div>

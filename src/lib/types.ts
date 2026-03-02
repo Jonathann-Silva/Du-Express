@@ -14,7 +14,8 @@ export type Delivery = {
   createdAt: Timestamp;
   finishedAt?: Timestamp;
   observations?: string;
-  paid?: boolean;
+  paid?: boolean; // Pago para o motoboy
+  paidByClient?: boolean; // Pago pela loja ao admin
 };
 
 export type AdminDeliveryStatus = 'pending' | 'accepted' | 'in-progress' | 'finished' | 'refused';

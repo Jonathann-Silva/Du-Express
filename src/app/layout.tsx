@@ -1,9 +1,11 @@
+
 import type { Metadata, Viewport } from 'next';
 import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import FirebaseProvider from '@/firebase/client-provider';
+import Script from 'next/script';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -56,6 +58,8 @@ export default function RootLayout({
           {children}
           <Toaster />
         </FirebaseProvider>
+        {/* SDK do Mercado Pago */}
+        <Script src="https://sdk.mercadopago.com/js/v2" strategy="beforeInteractive" />
       </body>
     </html>
   );

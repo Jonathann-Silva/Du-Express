@@ -1,14 +1,15 @@
+
 'use client';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Home, PlusSquare, History, HelpCircle } from 'lucide-react';
+import { Home, PlusSquare, History, Wallet } from 'lucide-react';
 
 const navItems = [
   { href: '/client', label: 'Início', icon: Home },
   { href: '/client/request', label: 'Novo Pedido', icon: PlusSquare },
   { href: '/client/history', label: 'Histórico', icon: History },
-  { href: '/client/support', label: 'Suporte', icon: HelpCircle },
+  { href: '/client/finance', label: 'Financeiro', icon: Wallet },
 ];
 
 export function ClientNav() {
