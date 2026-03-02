@@ -430,15 +430,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-function Badge({ children, variant = 'default', className }: { children: React.ReactNode, variant?: 'default' | 'outline', className?: string }) {
-    return (
-        <span className={cn(
-            "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight",
-            variant === 'default' ? "bg-primary text-primary-foreground" : "border text-muted-foreground",
-            className
-        )}>
-            {children}
-        </span>
-    )
-}
