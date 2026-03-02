@@ -65,8 +65,8 @@ export default function RequestDeliveryPage() {
     ].filter(r => r.value != null && r.value > 0);
   }, [userProfile]);
 
-  // Lógica de Detecção Automática de Condomínio
-  const isAutoDetectedCondo = useMemo(() => {
+  // Lógica de Detecção Automática de Condomínio Goldem / Italian
+  const isAutoDetectedGoldem = useMemo(() => {
     const cleanStreet = dropoffStreet.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     const cleanNum = dropoffNumber.trim();
 
@@ -76,8 +76,52 @@ export default function RequestDeliveryPage() {
     return isSabaia || isTicoTico;
   }, [dropoffStreet, dropoffNumber]);
 
+  // Lógica de Detecção Automática de Condomínio Monte Rey / Bem Viver
+  const isAutoDetectedMonteRey = useMemo(() => {
+    const cleanStreet = dropoffStreet.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const cleanNum = dropoffNumber.trim().replace(/\./g, ""); // Remove pontos para tratar 1.711 como 1711
+
+    const monteReyStreets = [
+      "bieja flor verde e branco",
+      "beija flor verde e branco",
+      "tapicuru preto",
+      "bem te vi pirata",
+      "formigueiro bico longo",
+      "sabia norte americano",
+      "bacurau pigmeu",
+      "rolinha comum",
+      "jandaia de testa vermelha",
+      "choca de coroa preta",
+      "barbudinho",
+      "coruja de carapaca",
+      "falso mutum",
+      "barbudo de coroa escarlate",
+      "batuira de bico torto",
+      "papa formiga de escamas",
+      "curiango comum",
+      "japim xexeu",
+      "soco pintado",
+      "lavadeira preta e branca",
+      "macarico grande de perna amarela",
+      "gaturamo alcaide",
+      "frango dagua azul",
+      "papa taoca do sul",
+      "pula pula assobiador",
+      "dancarino perereca",
+      "formigueiro de dorso ruivo",
+      "choca bate rabo",
+      "balanca rabo canela",
+      "andorinha ribeirinha"
+    ];
+
+    const isInList = monteReyStreets.some(s => cleanStreet.includes(s));
+    const isTicoTicoCampo = (cleanStreet.includes("tico tico do campo")) && cleanNum === "1711";
+
+    return isInList || isTicoTicoCampo;
+  }, [dropoffStreet, dropoffNumber]);
+
   useEffect(() => {
-    if (isAutoDetectedCondo && userProfile?.condoRateGoldemItalian) {
+    if (isAutoDetectedGoldem && userProfile?.condoRateGoldemItalian) {
       if (selectedPrice !== userProfile.condoRateGoldemItalian) {
         setSelectedPrice(userProfile.condoRateGoldemItalian);
         toast({
@@ -85,8 +129,16 @@ export default function RequestDeliveryPage() {
           description: "Taxa Cond. Goldem / Italian Ville aplicada automaticamente.",
         });
       }
+    } else if (isAutoDetectedMonteRey && userProfile?.condoRateMonteRey) {
+      if (selectedPrice !== userProfile.condoRateMonteRey) {
+        setSelectedPrice(userProfile.condoRateMonteRey);
+        toast({
+          title: "Condomínio Detectado",
+          description: "Taxa Cond. Monte Rey / Bem Viver aplicada automaticamente.",
+        });
+      }
     }
-  }, [isAutoDetectedCondo, userProfile, selectedPrice, toast]);
+  }, [isAutoDetectedGoldem, isAutoDetectedMonteRey, userProfile, selectedPrice, toast]);
 
   const handleRequest = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -254,6 +306,8 @@ export default function RequestDeliveryPage() {
     );
   }
 
+  const isAnyCondoDetected = isAutoDetectedGoldem || isAutoDetectedMonteRey;
+
   return (
     <div className="flex flex-col h-full bg-background">
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md px-4 py-4 border-b flex items-center justify-between">
@@ -274,7 +328,7 @@ export default function RequestDeliveryPage() {
           <section className="space-y-4">
             <div className="flex items-center justify-between px-1">
               <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest font-headline">1. Tipo de Entrega</h2>
-              {isAutoDetectedCondo && (
+              {isAnyCondoDetected && (
                 <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-black animate-pulse">
                   <ShieldAlert className="size-3" />
                   TAXA OBRIGATÓRIA
@@ -286,8 +340,7 @@ export default function RequestDeliveryPage() {
                 <RadioGroup 
                     value={selectedPrice?.toString() || ""} 
                     onValueChange={(val) => {
-                      // Se for condomínio detectado, impede a troca manual para taxas menores
-                      if (!isAutoDetectedCondo) {
+                      if (!isAnyCondoDetected) {
                         setSelectedPrice(parseFloat(val));
                       }
                     }} 
@@ -295,7 +348,7 @@ export default function RequestDeliveryPage() {
                 >
                     {rates.length > 0 ? rates.map((rate) => {
                         const isSelected = selectedPrice === rate.value;
-                        const isDisabled = isAutoDetectedCondo && !isSelected;
+                        const isDisabled = isAnyCondoDetected && !isSelected;
 
                         return (
                           <div key={rate.id} className="relative">
@@ -419,7 +472,6 @@ export default function RequestDeliveryPage() {
                       required 
                       value={dropoffStreet}
                       onChange={(e) => {
-                        // Aceita apenas letras e espaços (inclui acentos latinos), removendo números e símbolos
                         const filteredValue = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s]/g, "");
                         setDropoffStreet(filteredValue);
                       }}
