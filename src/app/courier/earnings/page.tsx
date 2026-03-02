@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, Calendar, CheckCircle, Wallet, ChevronLeft, ChevronRight, AlertCircle, Banknote } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Wallet, ChevronLeft, ChevronRight, Banknote } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,16 +10,11 @@ import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/
 import { 
     format, 
     startOfWeek, 
-    startOfMonth, 
-    endOfMonth, 
-    startOfDay, 
-    endOfDay, 
     addDays, 
     subDays, 
     addWeeks, 
     subWeeks, 
-    addMonths, 
-    subMonths 
+    getDay
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Delivery } from '@/lib/types';
@@ -30,67 +24,32 @@ import { cn } from '@/lib/utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
-type FilterType = 'today' | 'week' | 'month';
-
-const filterButtons: { label: string, type: FilterType }[] = [
-    { label: 'Hoje', type: 'today' },
-    { label: 'Esta Semana', type: 'week' },
-    { label: 'Este Mês', type: 'month' },
-];
-
 export default function CourierEarningsPage() {
-    const [activeFilter, setActiveFilter] = useState<FilterType>('week');
     const [currentDate, setCurrentDate] = useState(new Date());
     const { user, userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
 
-    const { dateRangeStart, dateRangeEnd, periodLabel, subLabel } = useMemo(() => {
-        const start = new Date(currentDate);
-        switch (activeFilter) {
-            case 'today':
-                return {
-                    dateRangeStart: startOfDay(start),
-                    dateRangeEnd: endOfDay(start),
-                    periodLabel: format(start, "d 'de' MMMM", { locale: ptBR }),
-                    subLabel: 'Ganhos do Dia'
-                };
-            case 'week':
-                const weekStart = startOfWeek(start, { weekStartsOn: 1 });
-                weekStart.setHours(0, 0, 0, 0);
-                const weekEnd = addDays(weekStart, 5); // Sábado
-                weekEnd.setHours(23, 59, 59, 999);
-                return {
-                    dateRangeStart: weekStart,
-                    dateRangeEnd: weekEnd,
-                    periodLabel: `${format(weekStart, 'dd/MM')} até ${format(weekEnd, 'dd/MM')}`,
-                    subLabel: 'Repasse da Semana (Seg-Sáb)'
-                };
-            case 'month':
-            default:
-                const monthStart = startOfMonth(start);
-                const monthEnd = endOfMonth(start);
-                monthStart.setHours(0, 0, 0, 0);
-                monthEnd.setHours(23, 59, 59, 999);
-                return {
-                    dateRangeStart: monthStart,
-                    dateRangeEnd: monthEnd,
-                    periodLabel: format(start, "MMMM 'de' yyyy", { locale: ptBR }),
-                    subLabel: 'Acumulado do Mês'
-                };
-        }
-    }, [activeFilter, currentDate]);
+    const { dateRangeStart, dateRangeEnd, periodLabel } = useMemo(() => {
+        const reference = new Date(currentDate);
+        const day = getDay(reference);
+        // Se for domingo (0), volta para sábado
+        const dateForCalc = day === 0 ? subDays(reference, 1) : reference;
+        
+        const weekStart = startOfWeek(dateForCalc, { weekStartsOn: 1 });
+        weekStart.setHours(0, 0, 0, 0);
+        
+        const weekEnd = addDays(weekStart, 5); // Sábado
+        weekEnd.setHours(23, 59, 59, 999);
+        
+        return {
+            dateRangeStart: weekStart,
+            dateRangeEnd: weekEnd,
+            periodLabel: `${format(weekStart, 'dd/MM')} até ${format(weekEnd, 'dd/MM')}`
+        };
+    }, [currentDate]);
 
-    const handlePrev = () => {
-        if (activeFilter === 'today') setCurrentDate(prev => subDays(prev, 1));
-        if (activeFilter === 'week') setCurrentDate(prev => subWeeks(prev, 1));
-        if (activeFilter === 'month') setCurrentDate(prev => subMonths(prev, 1));
-    };
-
-    const handleNext = () => {
-        if (activeFilter === 'today') setCurrentDate(prev => addDays(prev, 1));
-        if (activeFilter === 'week') setCurrentDate(prev => addWeeks(prev, 1));
-        if (activeFilter === 'month') setCurrentDate(prev => addMonths(prev, 1));
-    };
+    const handlePrev = () => setCurrentDate(prev => subWeeks(prev, 1));
+    const handleNext = () => setCurrentDate(prev => addWeeks(prev, 1));
 
     const [deliveries, setDeliveries] = useState<Delivery[] | null>(null);
     const [deliveriesLoading, setDeliveriesLoading] = useState(true);
@@ -152,26 +111,6 @@ export default function CourierEarningsPage() {
             </header>
 
             <main className="flex-1 overflow-y-auto px-4 pb-24">
-                <div className="mt-4 flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    {filterButtons.map(({ label, type }) => (
-                         <button 
-                            key={type}
-                            onClick={() => {
-                                setActiveFilter(type);
-                                setCurrentDate(new Date());
-                            }}
-                            className={cn(
-                                "whitespace-nowrap rounded-full px-5 h-10 text-sm font-bold transition-all",
-                                activeFilter === type 
-                                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' 
-                                    : 'bg-muted text-muted-foreground'
-                            )}
-                        >
-                            {label}
-                        </button>
-                    ))}
-                </div>
-
                 <section className="mt-4">
                     <Card className="p-3 bg-card border shadow-sm rounded-2xl">
                         <div className="flex items-center justify-between">
@@ -180,7 +119,7 @@ export default function CourierEarningsPage() {
                             </Button>
                             <div className="text-center">
                                 <p className="text-sm font-bold text-foreground">{periodLabel}</p>
-                                <p className="text-[10px] uppercase font-black text-primary tracking-widest leading-none mt-0.5">{subLabel}</p>
+                                <p className="text-[10px] uppercase font-black text-primary tracking-widest leading-none mt-0.5">Repasse da Semana (Seg-Sáb)</p>
                             </div>
                             <Button variant="ghost" size="icon" onClick={handleNext} className="rounded-full hover:bg-muted">
                                 <ChevronRight className="size-5" />
@@ -244,7 +183,7 @@ export default function CourierEarningsPage() {
                             <div className="text-center py-16 border-2 border-dashed rounded-[2rem] bg-muted/20">
                                 <Wallet className="mx-auto text-muted-foreground/20 size-16 mb-4" />
                                 <p className="font-bold text-muted-foreground">Nenhum ganho registrado</p>
-                                <p className="text-xs text-muted-foreground/60 mt-1 px-8">As entregas finalizadas no período selecionado aparecerão aqui.</p>
+                                <p className="text-xs text-muted-foreground/60 mt-1 px-8">As entregas finalizadas na semana selecionada aparecerão aqui.</p>
                             </div>
                         )}
                     </div>
