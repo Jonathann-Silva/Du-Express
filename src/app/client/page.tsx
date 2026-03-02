@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
-import { CheckCircle, Package, Plus, Timer, XCircle, ShieldCheck, AlertOctagon, CreditCard, ChevronRight } from 'lucide-react';
+import { CheckCircle, Package, Plus, Timer, XCircle, ShieldCheck, AlertOctagon, CreditCard, ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -104,7 +104,7 @@ export default function ClientHomePage() {
   
   return (
     <>
-      <header className="flex items-center justify-between px-6 pt-8 pb-4 sticky top-0 z-10 bg-background/80 backdrop-blur-md">
+      <header className="flex items-center justify-between px-6 pt-8 pb-4 sticky top-0 z-10 bg-background/80 backdrop-blur-md outline-none">
         <Link href="/client/settings" className="flex items-center gap-3 group">
           <Avatar className="size-12 border-2 border-primary group-hover:border-primary/50 transition-colors">
             {userProfile?.photoURL && <AvatarImage src={userProfile.photoURL} alt={userProfile.displayName || 'Client'} />}
@@ -214,14 +214,32 @@ export default function ClientHomePage() {
         </section>
 
         <section className="px-6 py-4">
-          <Button asChild className="w-full font-bold py-6 rounded-xl text-base" disabled={blockStatus.isBlocked}>
-            <Link href={blockStatus.isBlocked ? "#" : "/client/request"}>
+          {isLoading ? (
+            <Button className="w-full font-bold py-6 rounded-xl text-base opacity-70" disabled>
+              <Loader2 className="animate-spin size-5" />
+              Verificando status...
+            </Button>
+          ) : blockStatus.isBlocked ? (
+            <Button className="w-full font-bold py-6 rounded-xl text-base" variant="destructive" disabled>
               <Plus className="size-5" />
               Solicitar Nova Entrega
-            </Link>
-          </Button>
-          {blockStatus.isBlocked && (
-            <p className="text-center text-xs text-destructive font-bold mt-2">App bloqueado por pendência financeira.</p>
+            </Button>
+          ) : (
+            <Button asChild className="w-full font-bold py-6 rounded-xl text-base">
+              <Link href="/client/request">
+                <Plus className="size-5" />
+                Solicitar Nova Entrega
+              </Link>
+            </Button>
+          )}
+          
+          {!isLoading && blockStatus.isBlocked && (
+            <div className="mt-3 p-3 bg-destructive/10 rounded-xl border border-destructive/20">
+              <p className="text-center text-xs text-destructive font-bold leading-tight">
+                ACESSO BLOQUEADO POR PENDÊNCIA FINANCEIRA.<br/>
+                <span className="font-normal opacity-80">Regularize seu saldo para voltar a solicitar entregas.</span>
+              </p>
+            </div>
           )}
         </section>
         
