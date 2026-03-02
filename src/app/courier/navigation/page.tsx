@@ -285,7 +285,7 @@ export default function MultiDeliveryNavigation() {
                 </div>
             </div>
 
-            {/* Modal de confirmação de pagamento do cliente (Replicado para o modo mapa) */}
+            {/* Modal de confirmação de pagamento do cliente */}
             <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
                 setIsPaymentDialogOpen(open);
                 if (!open) {
@@ -295,7 +295,7 @@ export default function MultiDeliveryNavigation() {
             }}>
                 <DialogContent className="max-w-[90vw] rounded-3xl p-6">
                     <DialogHeader>
-                        <DialogTitle className="font-headline text-2xl font-black text-center">
+                        <DialogTitle className="font-headline text-2xl font-black text-center text-foreground">
                             {pixStep === 'choice' ? 'Forma de Pagamento' : 'Pagamento via Pix'}
                         </DialogTitle>
                         <DialogDescription className="text-center">
@@ -309,23 +309,23 @@ export default function MultiDeliveryNavigation() {
                         <div className="grid grid-cols-2 gap-4 py-6">
                             <Button 
                                 variant="outline" 
-                                className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-emerald-500 hover:bg-emerald-50"
+                                className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-emerald-500 hover:bg-emerald-50 hover:text-foreground transition-all"
                                 onClick={() => taskToFinish && performStatusUpdate(taskToFinish, 'finished', 'cash')}
                             >
                                 <div className="size-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
                                     <Banknote size={28} />
                                 </div>
-                                <span className="font-bold">Dinheiro</span>
+                                <span className="font-bold text-foreground">Dinheiro</span>
                             </Button>
                             <Button 
                                 variant="outline" 
-                                className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-[#32BCAD] hover:bg-[#32BCAD]/5"
+                                className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-[#32BCAD] hover:bg-[#32BCAD]/5 hover:text-foreground transition-all"
                                 onClick={() => setPixStep('qrcode')}
                             >
                                 <div className="size-12 rounded-xl bg-[#32BCAD] text-white flex items-center justify-center">
                                     <Smartphone size={28} />
                                 </div>
-                                <span className="font-bold">Pix</span>
+                                <span className="font-bold text-foreground">Pix</span>
                             </Button>
                         </div>
                     )}
@@ -352,7 +352,7 @@ export default function MultiDeliveryNavigation() {
                                     {taskToFinish?.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </h3>
                                 <Button 
-                                    className="w-full mt-8 h-14 rounded-2xl bg-[#32BCAD] hover:bg-[#2aa395] font-bold gap-2"
+                                    className="w-full mt-8 h-14 rounded-2xl bg-[#32BCAD] hover:bg-[#2aa395] font-bold gap-2 shadow-lg shadow-[#32BCAD]/20"
                                     onClick={simulatePixConfirmation}
                                     disabled={isCheckingPix}
                                 >
@@ -378,7 +378,7 @@ export default function MultiDeliveryNavigation() {
                         </div>
                     )}
 
-                    <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setIsPaymentDialogOpen(false)}>Cancelar</Button>
+                    <Button variant="ghost" className="w-full text-muted-foreground font-bold" onClick={() => setIsPaymentDialogOpen(false)}>Cancelar</Button>
                 </DialogContent>
             </Dialog>
         </div>

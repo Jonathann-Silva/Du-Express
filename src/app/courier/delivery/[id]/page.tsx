@@ -371,7 +371,7 @@ export default function ActiveDeliveryPage() {
         }}>
           <DialogContent className="max-w-[90vw] rounded-3xl p-6">
             <DialogHeader>
-              <DialogTitle className="font-headline text-2xl font-black text-center">
+              <DialogTitle className="font-headline text-2xl font-black text-center text-foreground">
                   {pixStep === 'choice' ? 'Forma de Pagamento' : 'Pagamento via Pix'}
               </DialogTitle>
               <DialogDescription className="text-center">
@@ -385,23 +385,23 @@ export default function ActiveDeliveryPage() {
                 <div className="grid grid-cols-2 gap-4 py-6">
                 <Button 
                     variant="outline" 
-                    className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-emerald-500 hover:bg-emerald-50 transition-all"
+                    className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-emerald-500 hover:bg-emerald-50 hover:text-foreground transition-all"
                     onClick={() => handleConfirmDelivery('cash')}
                 >
                     <div className="size-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
                     <Banknote size={28} />
                     </div>
-                    <span className="font-bold">Dinheiro</span>
+                    <span className="font-bold text-foreground">Dinheiro</span>
                 </Button>
                 <Button 
                     variant="outline" 
-                    className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-[#32BCAD] hover:bg-[#32BCAD]/5 transition-all"
+                    className="flex flex-col items-center gap-3 h-32 rounded-2xl border-2 hover:border-[#32BCAD] hover:bg-[#32BCAD]/5 hover:text-foreground transition-all"
                     onClick={() => setPixStep('qrcode')}
                 >
                     <div className="size-12 rounded-xl bg-[#32BCAD] text-white flex items-center justify-center">
                     <Smartphone size={28} />
                     </div>
-                    <span className="font-bold">Pix</span>
+                    <span className="font-bold text-foreground">Pix</span>
                 </Button>
                 </div>
             )}
@@ -463,7 +463,7 @@ export default function ActiveDeliveryPage() {
                 </div>
             )}
 
-            <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setIsPaymentDialogOpen(false)}>Cancelar</Button>
+            <Button variant="ghost" className="w-full text-muted-foreground font-bold" onClick={() => setIsPaymentDialogOpen(false)}>Cancelar</Button>
           </DialogContent>
         </Dialog>
     </div>
