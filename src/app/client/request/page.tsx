@@ -1,7 +1,6 @@
-
 'use client';
 
-import { ArrowLeft, User, Wallet, Map, ArrowRight, Loader2, CircleDot, Building, MapPin, AlertCircle, Ban, CreditCard, Banknote } from "lucide-react";
+import { ArrowLeft, User, Wallet, Map, ArrowRight, Loader2, CircleDot, Building, MapPin, AlertCircle, Ban, CreditCard, Banknote, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -122,10 +121,10 @@ export default function RequestDeliveryPage() {
             return;
         }
     } else {
-        pickup = `${pickup_street}, ${pickup_number} - ${pickup_neighborhood}`;
+        pickup = `${pickup_street || ''}, ${pickup_number || ''} - ${pickup_neighborhood || ''}`.replace(/^, /, '').replace(/ - $/, '');
     }
 
-    const dropoff = `${dropoff_street}, ${dropoff_number} - ${dropoff_neighborhood}`;
+    const dropoff = `${dropoff_street || ''}, ${dropoff_number || ''} - ${dropoff_neighborhood || ''}`;
 
     const newDelivery = {
       pickup: pickup,
@@ -134,7 +133,7 @@ export default function RequestDeliveryPage() {
       status: "pending" as const,
       clientId: user.uid,
       createdAt: serverTimestamp(),
-      observations: observations,
+      observations: observations || "",
       paidByClient: false,
       paymentMethod: paymentMethod
     };
@@ -170,7 +169,7 @@ export default function RequestDeliveryPage() {
             addDoc(notificationsCollectionRef, {
               userId: adminDoc.id,
               title: '📦 Novo Pedido!',
-              description: `${userProfile.displayName} solicitou uma entrega para ${dropoff_neighborhood}.`,
+              description: `${userProfile.displayName} solicitou uma entrega para ${dropoff_neighborhood || 'um novo destino'}.`,
               createdAt: serverTimestamp(),
               read: false,
               icon: 'package',
@@ -178,11 +177,7 @@ export default function RequestDeliveryPage() {
             }).catch(() => {});
           });
         } catch (queryError) {
-          const permissionError = new FirestorePermissionError({
-            path: 'users',
-            operation: 'list',
-          });
-          errorEmitter.emit('permission-error', permissionError);
+          console.error("Admin query error", queryError);
         }
       })
       .catch(async (serverError) => {
@@ -232,8 +227,8 @@ export default function RequestDeliveryPage() {
   }
 
   return (
-    <>
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b px-4 py-4 border-b flex items-center justify-between">
+    <div className="flex flex-col h-full bg-background">
+      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md px-4 py-4 border-b flex items-center justify-between">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/client">
             <ArrowLeft />
@@ -246,34 +241,49 @@ export default function RequestDeliveryPage() {
       </header>
 
       <main className="flex-1 overflow-y-auto pb-32">
-        <form onSubmit={handleRequest} className="px-4 py-6 space-y-6 max-w-md mx-auto">
+        <form onSubmit={handleRequest} className="px-4 py-6 space-y-8 max-w-md mx-auto">
           
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest px-1 font-headline">Tipo de Entrega</h2>
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">1. Tipo de Entrega</h2>
             
-            {userLoading ? <Skeleton className="h-32 w-full" /> : (
-                <RadioGroup value={selectedPrice?.toString()} onValueChange={(value) => setSelectedPrice(parseFloat(value))} className="grid grid-cols-1 gap-3">
+            {userLoading ? <Skeleton className="h-32 w-full rounded-2xl" /> : (
+                <RadioGroup 
+                    value={selectedPrice?.toString() || ""} 
+                    onValueChange={(val) => setSelectedPrice(parseFloat(val))} 
+                    className="grid grid-cols-1 gap-3"
+                >
                     {rates.length > 0 ? rates.map((rate) => (
-                        <div key={rate.id}>
-                            <RadioGroupItem value={rate.value!.toString()} id={rate.id} className="sr-only" />
-                            <Label htmlFor={rate.id} className={cn(
-                                "flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer",
-                                selectedPrice === rate.value ? "border-primary bg-primary/5" : "border-transparent bg-muted/60 hover:bg-muted"
-                            )}>
-                                <span className="font-bold flex items-center justify-between">
-                                    <span className="flex items-center gap-2">
-                                        <MapPin className="size-3.5 text-primary" />
+                        <div key={rate.id} className="relative">
+                            <RadioGroupItem value={rate.value!.toString()} id={rate.id} className="peer sr-only" />
+                            <Label 
+                                htmlFor={rate.id} 
+                                className={cn(
+                                    "flex flex-col p-4 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden",
+                                    selectedPrice === rate.value 
+                                        ? "border-primary bg-primary/5 shadow-md" 
+                                        : "border-muted bg-card hover:bg-muted/30"
+                                )}
+                            >
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="font-bold text-sm flex items-center gap-2">
+                                        <MapPin className={cn("size-4", selectedPrice === rate.value ? "text-primary" : "text-muted-foreground")} />
                                         {rate.label}
                                     </span>
-                                    <span>{rate.value!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                </span>
-                                <span className="text-xs text-muted-foreground mt-1">{rate.description}</span>
+                                    <span className="text-base font-black text-primary">
+                                        {rate.value!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </span>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground font-medium">{rate.description}</span>
+                                {selectedPrice === rate.value && (
+                                    <CheckCircle2 className="absolute -right-1 -bottom-1 size-8 text-primary opacity-10" />
+                                )}
                             </Label>
                         </div>
                     )) : (
-                         <Card className="bg-amber-500/10 border-amber-500/20 text-center p-4">
-                            <p className="text-sm font-semibold text-amber-600">Nenhuma taxa de entrega configurada.</p>
-                            <p className="text-xs text-amber-500">Por favor, entre em contato com o administrador.</p>
+                         <Card className="bg-amber-500/10 border-amber-500/20 text-center p-6 rounded-2xl">
+                            <AlertCircle className="size-8 text-amber-500 mx-auto mb-2" />
+                            <p className="text-sm font-bold text-amber-700">Nenhuma taxa configurada.</p>
+                            <p className="text-[10px] text-amber-600 mt-1">Sua conta ainda não possui valores de entrega definidos. Fale com a central.</p>
                         </Card>
                     )}
                 </RadioGroup>
@@ -281,56 +291,66 @@ export default function RequestDeliveryPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest px-1 font-headline">Opção de Pagamento</h2>
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">2. Opção de Pagamento</h2>
             <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="grid grid-cols-1 gap-3">
-                <div>
-                    <RadioGroupItem value="credit" id="pay-credit" className="sr-only" />
-                    <Label htmlFor="pay-credit" className={cn(
-                        "flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer",
-                        paymentMethod === 'credit' ? "border-primary bg-primary/5" : "border-transparent bg-muted/60 hover:bg-muted"
-                    )}>
-                        <span className="font-bold flex items-center gap-2">
-                            <CreditCard className="size-4 text-primary" />
-                            Crediário
-                        </span>
-                        <span className="text-xs text-muted-foreground mt-1">Cobrança semanal automática no aplicativo.</span>
+                <div className="relative">
+                    <RadioGroupItem value="credit" id="pay-credit" className="peer sr-only" />
+                    <Label 
+                        htmlFor="pay-credit" 
+                        className={cn(
+                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer",
+                            paymentMethod === 'credit' ? "border-primary bg-primary/5 shadow-sm" : "border-muted bg-card"
+                        )}
+                    >
+                        <div className={cn("size-10 rounded-xl flex items-center justify-center", paymentMethod === 'credit' ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+                            <CreditCard className="size-5" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-bold text-sm">Crediário</p>
+                            <p className="text-[10px] text-muted-foreground font-medium">Cobrança semanal automática no app</p>
+                        </div>
                     </Label>
                 </div>
-                <div>
-                    <RadioGroupItem value="collect" id="pay-collect" className="sr-only" />
-                    <Label htmlFor="pay-collect" className={cn(
-                        "flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer",
-                        paymentMethod === 'collect' ? "border-primary bg-primary/5" : "border-transparent bg-muted/60 hover:bg-muted"
-                    )}>
-                        <span className="font-bold flex items-center gap-2">
-                            <Banknote className="size-4 text-primary" />
-                            Receber - Dinheiro ou Pix
-                        </span>
-                        <span className="text-xs text-muted-foreground mt-1">O entregador deve cobrar o valor na entrega.</span>
+                <div className="relative">
+                    <RadioGroupItem value="collect" id="pay-collect" className="peer sr-only" />
+                    <Label 
+                        htmlFor="pay-collect" 
+                        className={cn(
+                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer",
+                            paymentMethod === 'collect' ? "border-primary bg-primary/5 shadow-sm" : "border-muted bg-card"
+                        )}
+                    >
+                        <div className={cn("size-10 rounded-xl flex items-center justify-center", paymentMethod === 'collect' ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+                            <Banknote className="size-5" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-bold text-sm">Receber no Local</p>
+                            <p className="text-[10px] text-muted-foreground font-medium">Motoboy cobra em dinheiro ou pix na entrega</p>
+                        </div>
                     </Label>
                 </div>
             </RadioGroup>
           </section>
           
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest px-1 font-headline">Detalhes da Coleta</h2>
-            <Card className="p-4 rounded-xl">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">3. Detalhes da Coleta</h2>
+            <Card className="p-5 rounded-2xl border-none shadow-sm bg-muted/30">
               <div className="space-y-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="pickup_street">Endereço de Coleta (Opcional)</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pickup_street" className="text-xs font-bold text-muted-foreground ml-1">Rua de Coleta (Opcional)</Label>
                   <div className="relative">
-                    <CircleDot className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-5" />
-                    <Input id="pickup_street" name="pickup_street" placeholder="Rua de Coleta, 456" className="pl-10 py-6" />
+                    <CircleDot className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
+                    <Input id="pickup_street" name="pickup_street" placeholder={userProfile?.address ? "Usar endereço salvo" : "Rua de Coleta, 456"} className="pl-10 h-12 rounded-xl bg-background" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="pickup_number">Número</Label>
-                    <Input id="pickup_number" name="pickup_number" placeholder="Loja 3" className="py-6" />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pickup_number" className="text-xs font-bold text-muted-foreground ml-1">Número</Label>
+                    <Input id="pickup_number" name="pickup_number" placeholder="Ex: Loja 3" className="h-12 rounded-xl bg-background" />
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="pickup_neighborhood">Bairro</Label>
-                    <Input id="pickup_neighborhood" name="pickup_neighborhood" placeholder="Comercial" className="py-6" />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pickup_neighborhood" className="text-xs font-bold text-muted-foreground ml-1">Bairro</Label>
+                    <Input id="pickup_neighborhood" name="pickup_neighborhood" placeholder="Centro" className="h-12 rounded-xl bg-background" />
                   </div>
                 </div>
               </div>
@@ -338,46 +358,49 @@ export default function RequestDeliveryPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest px-1 font-headline">Detalhes do Destino</h2>
-            <Card className="p-4 rounded-xl">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">4. Detalhes do Destino</h2>
+            <Card className="p-5 rounded-2xl border-none shadow-sm bg-muted/30">
               <div className="space-y-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="dropoff_street">Endereço de Entrega</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="dropoff_street" className="text-xs font-bold text-muted-foreground ml-1">Endereço de Entrega</Label>
                   <div className="relative">
-                    <Map className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-5" />
-                    <Input id="dropoff_street" name="dropoff_street" placeholder="Rua Principal, 123" className="pl-10 py-6" required />
+                    <Map className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
+                    <Input id="dropoff_street" name="dropoff_street" placeholder="Rua Principal, 123" className="pl-10 h-12 rounded-xl bg-background" required />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="dropoff_number">Número</Label>
-                    <Input id="dropoff_number" name="dropoff_number" placeholder="Ex: 123" className="py-6" required/>
-                    <p className="text-[10px] text-muted-foreground mt-1">Insira apenas o número para melhor precisão no GPS.</p>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="dropoff_number" className="text-xs font-bold text-muted-foreground ml-1">Número</Label>
+                    <Input id="dropoff_number" name="dropoff_number" placeholder="Ex: 123" className="h-12 rounded-xl bg-background" required/>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="dropoff_neighborhood">Bairro</Label>
-                    <Input id="dropoff_neighborhood" name="dropoff_neighborhood" placeholder="Centro" className="py-6" required/>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="dropoff_neighborhood" className="text-xs font-bold text-muted-foreground ml-1">Bairro</Label>
+                    <Input id="dropoff_neighborhood" name="dropoff_neighborhood" placeholder="Centro" className="h-12 rounded-xl bg-background" required/>
                   </div>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="observations">Observações (Apto, Bloco, etc)</Label>
-                  <Textarea id="observations" name="observations" placeholder="Ex: Apto 4B, Bloco 2, deixar na portaria..." />
+                <div className="space-y-1.5">
+                  <Label htmlFor="observations" className="text-xs font-bold text-muted-foreground ml-1">Observações (Apto, Bloco, etc)</Label>
+                  <Textarea id="observations" name="observations" placeholder="Ex: Apto 4B, Bloco 2, deixar na portaria..." className="rounded-xl bg-background min-h-[100px] resize-none" />
                 </div>
               </div>
             </Card>
           </section>
 
-          <div className="pt-4">
-            <Button type="submit" disabled={isSubmitting || userLoading || selectedPrice === null || blockStatus.isBlocked} className="w-full py-6 text-base font-bold rounded-xl">
-                {isSubmitting ? <Loader2 className="animate-spin" /> : 'Confirmar Solicitação de Entrega'}
-                {!isSubmitting && <ArrowRight className="size-5 ml-2" />}
+          <div className="pt-6">
+            <Button type="submit" disabled={isSubmitting || userLoading || selectedPrice === null || blockStatus.isBlocked} className="w-full h-16 text-lg font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95">
+                {isSubmitting ? <Loader2 className="animate-spin size-6" /> : (
+                    <>
+                        SOLICITAR ENTREGA
+                        <ArrowRight className="size-6 ml-3" />
+                    </>
+                )}
             </Button>
-            <p className="text-center text-xs text-muted-foreground mt-4 px-6">
-              Ao confirmar, um novo pedido será criado e os administradores notificados.
+            <p className="text-center text-[10px] text-muted-foreground mt-4 px-8 uppercase font-bold tracking-widest opacity-60">
+              Ao confirmar, a central Lucas-Expresso enviará o motoboy mais próximo.
             </p>
           </div>
         </form>
       </main>
-    </>
+    </div>
   );
 }
