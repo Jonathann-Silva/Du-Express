@@ -1,6 +1,7 @@
+
 'use client';
 
-import { ArrowLeft, User, Wallet, Map, ArrowRight, Loader2, CircleDot, Building, MapPin, AlertCircle, Ban, CreditCard, Banknote, CheckCircle2, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Wallet, Map, ArrowRight, Loader2, CircleDot, MapPin, AlertCircle, CreditCard, Banknote, CheckCircle2, ShieldAlert, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -66,58 +67,20 @@ export default function RequestDeliveryPage() {
     ].filter(r => r.value != null && r.value > 0);
   }, [userProfile]);
 
-  // Lógica de Detecção Automática de Condomínio Goldem / Italian
   const isAutoDetectedGoldem = useMemo(() => {
     const cleanStreet = dropoffStreet.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     const cleanNum = dropoffNumber.trim();
-
     const isSabaia = (cleanStreet === "rua sabia da praia" || cleanStreet === "sabia da praia") && cleanNum === "855";
     const isTicoTico = (cleanStreet === "rua tico tico rei" || cleanStreet === "tico tico rei") && cleanNum === "840";
-
     return isSabaia || isTicoTico;
   }, [dropoffStreet, dropoffNumber]);
 
-  // Lógica de Detecção Automática de Condomínio Monte Rey / Bem Viver
   const isAutoDetectedMonteRey = useMemo(() => {
     const cleanStreet = dropoffStreet.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-    const cleanNum = dropoffNumber.trim().replace(/\./g, ""); // Remove pontos para tratar 1.711 como 1711
-
-    const monteReyStreets = [
-      "bieja flor verde e branco",
-      "beija flor verde e branco",
-      "tapicuru preto",
-      "bem te vi pirata",
-      "formigueiro bico longo",
-      "sabia norte americano",
-      "bacurau pigmeu",
-      "rolinha comum",
-      "jandaia de testa vermelha",
-      "choca de coroa preta",
-      "barbudinho",
-      "coruja de carapaca",
-      "falso mutum",
-      "barbudo de coroa escarlate",
-      "batuira de bico torto",
-      "papa formiga de escamas",
-      "curiango comum",
-      "japim xexeu",
-      "soco pintado",
-      "lavadeira preta e branca",
-      "macarico grande de perna amarela",
-      "gaturamo alcaide",
-      "frango dagua azul",
-      "papa taoca do sul",
-      "pula pula assobiador",
-      "dancarino perereca",
-      "formigueiro de dorso ruivo",
-      "choca bate rabo",
-      "balanca rabo canela",
-      "andorinha ribeirinha"
-    ];
-
+    const cleanNum = dropoffNumber.trim().replace(/\./g, "");
+    const monteReyStreets = ["bieja flor verde e branco", "beija flor verde e branco", "tapicuru preto", "bem te vi pirata", "formigueiro bico longo", "sabia norte americano", "bacurau pigmeu", "rolinha comum", "jandaia de testa vermelha", "choca de coroa preta", "barbudinho", "coruja de carapaca", "falso mutum", "barbudo de coroa escarlate", "batuira de bico torto", "papa formiga de escamas", "curiango comum", "japim xexeu", "soco pintado", "lavadeira preta e branca", "macarico grande de perna amarela", "gaturamo alcaide", "frango dagua azul", "papa taoca do sul", "pula pula assobiador", "dancarino perereca", "formigueiro de dorso ruivo", "choca bate rabo", "balanca rabo canela", "andorinha ribeirinha"];
     const isInList = monteReyStreets.some(s => cleanStreet.includes(s));
     const isTicoTicoCampo = (cleanStreet.includes("tico tico do campo")) && cleanNum === "1711";
-
     return isInList || isTicoTicoCampo;
   }, [dropoffStreet, dropoffNumber]);
 
@@ -125,18 +88,12 @@ export default function RequestDeliveryPage() {
     if (isAutoDetectedGoldem && userProfile?.condoRateGoldemItalian) {
       if (selectedPrice !== userProfile.condoRateGoldemItalian) {
         setSelectedPrice(userProfile.condoRateGoldemItalian);
-        toast({
-          title: "Condomínio Detectado",
-          description: "Taxa Cond. Goldem / Italian Ville aplicada automaticamente.",
-        });
+        toast({ title: "Condomínio Detectado", description: "Taxa Cond. Goldem / Italian Ville aplicada automaticamente." });
       }
     } else if (isAutoDetectedMonteRey && userProfile?.condoRateMonteRey) {
       if (selectedPrice !== userProfile.condoRateMonteRey) {
         setSelectedPrice(userProfile.condoRateMonteRey);
-        toast({
-          title: "Condomínio Detectado",
-          description: "Taxa Cond. Monte Rey / Bem Viver aplicada automaticamente.",
-        });
+        toast({ title: "Condomínio Detectado", description: "Taxa Cond. Monte Rey / Bem Viver aplicada automaticamente." });
       }
     }
   }, [isAutoDetectedGoldem, isAutoDetectedMonteRey, userProfile, selectedPrice, toast]);
@@ -144,43 +101,16 @@ export default function RequestDeliveryPage() {
   const handleRequest = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (blockStatus.isBlocked) {
-        toast({
-            variant: "destructive",
-            title: "Conta Bloqueada",
-            description: "Você possui pendências financeiras da semana anterior. Por favor, regularize seu saldo.",
-        });
+        toast({ variant: "destructive", title: "Conta Bloqueada", description: "Você possui pendências financeiras. Regularize seu saldo." });
         return;
     }
-
-    if (!user || !userProfile || !firestore) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Você precisa estar logado para solicitar uma entrega.",
-      });
-      return;
-    }
-    
-    if (selectedPrice === null) {
-        toast({
-            variant: "destructive",
-            title: "Selecione uma taxa",
-            description: "Por favor, escolha um tipo de entrega.",
-        });
-        return;
-    }
-
-    if (paymentMethod === null) {
-        toast({
-            variant: "destructive",
-            title: "Selecione o pagamento",
-            description: "Por favor, escolha uma opção de pagamento.",
-        });
+    if (!user || !userProfile || !firestore) return;
+    if (selectedPrice === null || paymentMethod === null) {
+        toast({ variant: "destructive", title: "Campos Incompletos", description: "Selecione a taxa e o método de pagamento." });
         return;
     }
 
     setIsSubmitting(true);
-
     const formData = new FormData(event.currentTarget);
     const pickup_street = formData.get("pickup_street") as string;
     const pickup_number = formData.get("pickup_number") as string;
@@ -188,343 +118,125 @@ export default function RequestDeliveryPage() {
     const observations = formData.get("observations") as string;
     const dropoff_neighborhood = formData.get("dropoff_neighborhood") as string;
 
-    let pickup: string;
-    if (!pickup_street && !pickup_number && !pickup_neighborhood) {
-        if (userProfile.address) {
-            pickup = userProfile.address;
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Endereço de Coleta Faltando",
-                description: "Por favor, preencha o endereço de coleta ou cadastre um endereço no seu perfil.",
-            });
-            setIsSubmitting(false);
-            return;
-        }
-    } else {
-        pickup = `${pickup_street || ''}, ${pickup_number || ''} - ${pickup_neighborhood || ''}`.replace(/^, /, '').replace(/ - $/, '');
-    }
-
-    const dropoff = `${dropoffStreet}, ${dropoffNumber} - ${dropoff_neighborhood || ''}`;
+    let pickup = pickup_street ? `${pickup_street}, ${pickup_number} - ${pickup_neighborhood}` : (userProfile.address || 'Endereço da Loja');
+    const dropoff = `${dropoffStreet}, ${dropoffNumber} - ${dropoff_neighborhood}`;
 
     const newDelivery = {
-      pickup: pickup,
-      dropoff: dropoff,
+      pickup,
+      dropoff,
       price: selectedPrice,
       status: "pending" as const,
       clientId: user.uid,
       createdAt: serverTimestamp(),
       observations: observations || "",
-      paidByClient: false,
+      paidByClient: paymentMethod !== 'credit', // Pix e Dinheiro já contam como pagos pela loja
       paymentMethod: paymentMethod
     };
 
-    const deliveriesCollectionRef = collection(firestore, "deliveries");
-    const notificationsCollectionRef = collection(firestore, 'notifications');
-
-    addDoc(deliveriesCollectionRef, newDelivery)
+    const deliveriesRef = collection(firestore, "deliveries");
+    addDoc(deliveriesRef, newDelivery)
       .then(async () => {
-        toast({
-          title: "Pedido Enviado!",
-          description: `Seu pedido de entrega foi enviado com sucesso.`,
-        });
+        toast({ title: "Pedido Enviado!" });
         router.push("/client");
-
-        // Notificação para o Próprio Cliente
-        addDoc(notificationsCollectionRef, {
-          userId: user.uid,
-          title: 'Pedido Recebido!',
-          description: 'Sua solicitação de entrega foi recebida e está aguardando um entregador.',
-          createdAt: serverTimestamp(),
-          read: false,
-          icon: 'package',
-          link: '/client'
-        }).catch(() => {});
-
-        // BUSCAR ADMINS E NOTIFICAR
-        try {
-          const adminsQuery = query(collection(firestore, 'users'), where('role', '==', 'admin'));
-          const adminsSnapshot = await getDocs(adminsQuery);
-          
-          adminsSnapshot.docs.forEach(adminDoc => {
-            addDoc(notificationsCollectionRef, {
-              userId: adminDoc.id,
-              title: '📦 Novo Pedido!',
-              description: `${userProfile.displayName} solicitou uma entrega para ${dropoff_neighborhood || 'um novo destino'}.`,
-              createdAt: serverTimestamp(),
-              read: false,
-              icon: 'package',
-              link: '/admin'
-            }).catch(() => {});
-          });
-        } catch (queryError) {
-          console.error("Admin query error", queryError);
-        }
       })
       .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: deliveriesCollectionRef.path,
-          operation: 'create',
-          requestResourceData: newDelivery,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-
-        toast({
-          variant: "destructive",
-          title: "Falha ao enviar pedido",
-          description: "Ocorreu um erro ao enviar seu pedido. Tente novamente.",
-        });
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'deliveries', operation: 'create', requestResourceData: newDelivery }));
       })
-      .finally(() => {
-        setIsSubmitting(false);
-      });
+      .finally(() => setIsSubmitting(false));
   };
 
   if (blockStatus.isBlocked) {
     return (
         <div className="flex flex-col h-full bg-background items-center justify-center p-8 text-center">
-            <div className="size-24 rounded-full bg-destructive/10 flex items-center justify-center mb-6">
-                <Ban className="size-12 text-destructive" />
-            </div>
-            <h2 className="text-2xl font-black font-headline text-foreground">Solicitações Bloqueadas</h2>
-            <p className="text-muted-foreground mt-4 leading-tight">
-                Você possui pendências financeiras da semana anterior que venceram na última quarta-feira.
-            </p>
-            <div className="w-full mt-8 p-4 bg-muted/50 rounded-2xl border border-dashed text-left">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Resumo da Dívida</p>
-                <div className="flex justify-between items-baseline">
-                    <span className="text-sm font-medium">Valor em aberto:</span>
-                    <span className="text-xl font-black text-destructive">{blockStatus.debtAmount?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                </div>
-            </div>
-            <Button asChild className="w-full mt-8 py-7 rounded-2xl text-base font-bold shadow-xl shadow-primary/20">
-                <Link href="/client/finance">Ir para Pagamento</Link>
-            </Button>
-            <Button asChild variant="ghost" className="mt-2 w-full">
-                <Link href="/client">Voltar ao Início</Link>
-            </Button>
+            <div className="size-24 rounded-full bg-destructive/10 flex items-center justify-center mb-6"><AlertCircle className="size-12 text-destructive" /></div>
+            <h2 className="text-2xl font-black font-headline">Acesso Bloqueado</h2>
+            <p className="text-muted-foreground mt-4">Regularize sua pendência de {blockStatus.debtAmount?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} para continuar.</p>
+            <Button asChild className="w-full mt-8 py-7 rounded-2xl font-bold shadow-xl"><Link href="/client/finance">Ir para Pagamento</Link></Button>
         </div>
     );
   }
 
-  const isAnyCondoDetected = isAutoDetectedGoldem || isAutoDetectedMonteRey;
-
   return (
     <div className="flex flex-col h-full bg-background">
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md px-4 py-4 border-b flex items-center justify-between">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/client">
-            <ArrowLeft />
-          </Link>
-        </Button>
+        <Button variant="ghost" size="icon" asChild><Link href="/client"><ArrowLeft /></Link></Button>
         <h1 className="text-lg font-semibold tracking-tight font-headline">Nova Entrega</h1>
         <Avatar className="size-8 border border-primary/30">
-          {userProfile?.photoURL && <AvatarImage src={userProfile.photoURL} alt={userProfile.displayName || 'Client'} />}
-          <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
-            {userProfile?.displayName?.charAt(0) || 'C'}
-          </AvatarFallback>
+          {userProfile?.photoURL && <AvatarImage src={userProfile.photoURL} alt={userProfile.displayName || ''} />}
+          <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">{userProfile?.displayName?.charAt(0) || 'C'}</AvatarFallback>
         </Avatar>
       </header>
 
       <main className="flex-1 overflow-y-auto pb-32">
         <form onSubmit={handleRequest} className="px-4 py-6 space-y-8 max-w-md mx-auto">
-          
           <section className="space-y-4">
             <div className="flex items-center justify-between px-1">
               <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest font-headline">1. Tipo de Entrega</h2>
-              {isAnyCondoDetected && (
-                <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-black animate-pulse">
-                  <ShieldAlert className="size-3" />
-                  TAXA OBRIGATÓRIA
-                </div>
-              )}
+              {(isAutoDetectedGoldem || isAutoDetectedMonteRey) && <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-black animate-pulse"><ShieldAlert className="size-3" /> TAXA OBRIGATÓRIA</div>}
             </div>
-            
-            {userLoading ? <Skeleton className="h-32 w-full rounded-2xl" /> : (
-                <RadioGroup 
-                    value={selectedPrice?.toString() || ""} 
-                    onValueChange={(val) => {
-                      if (!isAnyCondoDetected) {
-                        setSelectedPrice(parseFloat(val));
-                      }
-                    }} 
-                    className="grid grid-cols-1 gap-3"
-                >
-                    {rates.length > 0 ? rates.map((rate) => {
-                        const isSelected = selectedPrice === rate.value;
-                        const isDisabled = isAnyCondoDetected && !isSelected;
-
-                        return (
-                          <div key={rate.id} className="relative">
-                              <RadioGroupItem value={rate.value!.toString()} id={rate.id} className="peer sr-only" disabled={isDisabled} />
-                              <Label 
-                                  htmlFor={rate.id} 
-                                  className={cn(
-                                      "flex flex-col p-4 rounded-2xl border-2 transition-all relative overflow-hidden",
-                                      isSelected 
-                                          ? "border-primary bg-primary/5 shadow-md" 
-                                          : (isDisabled ? "opacity-40 cursor-not-allowed border-muted bg-muted/10" : "border-muted bg-card hover:bg-muted/30 cursor-pointer")
-                                  )}
-                              >
-                                  <div className="flex justify-between items-center mb-1">
-                                      <span className="font-bold text-sm flex items-center gap-2">
-                                          <MapPin className={cn("size-4", isSelected ? "text-primary" : "text-muted-foreground")} />
-                                          {rate.label}
-                                      </span>
-                                      <span className="text-base font-black text-primary">
-                                          {rate.value!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                      </span>
-                                  </div>
-                                  <span className="text-[10px] text-muted-foreground font-medium">{rate.description}</span>
-                                  {isSelected && (
-                                      <CheckCircle2 className="absolute -right-1 -bottom-1 size-8 text-primary opacity-10" />
-                                  )}
-                              </Label>
-                          </div>
-                        );
-                    }) : (
-                         <Card className="bg-amber-500/10 border-amber-500/20 text-center p-6 rounded-2xl">
-                            <AlertCircle className="size-8 text-amber-500 mx-auto mb-2" />
-                            <p className="text-sm font-bold text-amber-700">Nenhuma taxa configurada.</p>
-                            <p className="text-[10px] text-amber-600 mt-1">Sua conta ainda não possui valores de entrega definidos. Fale com a central.</p>
-                        </Card>
-                    )}
-                </RadioGroup>
-            )}
+            <RadioGroup value={selectedPrice?.toString() || ""} onValueChange={(val) => !isAutoDetectedGoldem && !isAutoDetectedMonteRey && setSelectedPrice(parseFloat(val))} className="grid gap-3">
+                {rates.map((rate) => {
+                    const isSelected = selectedPrice === rate.value;
+                    const isDisabled = (isAutoDetectedGoldem || isAutoDetectedMonteRey) && !isSelected;
+                    return (
+                      <div key={rate.id} className="relative">
+                          <RadioGroupItem value={rate.value!.toString()} id={rate.id} className="sr-only" disabled={isDisabled} />
+                          <Label htmlFor={rate.id} className={cn("flex flex-col p-4 rounded-2xl border-2 transition-all relative overflow-hidden", isSelected ? "border-primary bg-primary/5 shadow-md" : (isDisabled ? "opacity-40 cursor-not-allowed border-muted bg-muted/10" : "border-muted bg-card hover:bg-muted/30 cursor-pointer"))}>
+                              <div className="flex justify-between items-center mb-1">
+                                  <span className="font-bold text-sm flex items-center gap-2"><MapPin className={cn("size-4", isSelected ? "text-primary" : "text-muted-foreground")} /> {rate.label}</span>
+                                  <span className="text-base font-black text-primary">{rate.value!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground font-medium">{rate.description}</span>
+                              {isSelected && <CheckCircle2 className="absolute -right-1 -bottom-1 size-8 text-primary opacity-10" />}
+                          </Label>
+                      </div>
+                    );
+                })}
+            </RadioGroup>
           </section>
 
           <section className="space-y-4">
             <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">2. Opção de Pagamento</h2>
-            <RadioGroup value={paymentMethod || ""} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="grid grid-cols-1 gap-3">
-                <div className="relative">
-                    <RadioGroupItem value="credit" id="pay-credit" className="peer sr-only" />
-                    <Label 
-                        htmlFor="pay-credit" 
-                        className={cn(
-                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer",
-                            paymentMethod === 'credit' ? "border-primary bg-primary/5 shadow-sm" : "border-muted bg-card"
-                        )}
-                    >
-                        <div className={cn("size-10 rounded-xl flex items-center justify-center", paymentMethod === 'credit' ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
-                            <CreditCard className="size-5" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="font-bold text-sm">Crediário</p>
-                            <p className="text-[10px] text-muted-foreground font-medium">Cobrança semanal automática no app</p>
-                        </div>
-                    </Label>
-                </div>
-                <div className="relative">
-                    <RadioGroupItem value="collect" id="pay-collect" className="peer sr-only" />
-                    <Label 
-                        htmlFor="pay-collect" 
-                        className={cn(
-                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer",
-                            paymentMethod === 'collect' ? "border-primary bg-primary/5 shadow-sm" : "border-muted bg-card"
-                        )}
-                    >
-                        <div className={cn("size-10 rounded-xl flex items-center justify-center", paymentMethod === 'collect' ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
-                            <Banknote className="size-5" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="font-bold text-sm">Receber no Local</p>
-                            <p className="text-[10px] text-muted-foreground font-medium">Motoboy cobra em dinheiro ou pix na entrega</p>
-                        </div>
-                    </Label>
-                </div>
+            <RadioGroup value={paymentMethod || ""} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="grid gap-3">
+                {[
+                    { id: 'pay-credit', value: 'credit', label: 'Crediário', desc: 'Cobrança semanal no app', icon: CreditCard, color: 'bg-primary' },
+                    { id: 'pay-pix', value: 'pix', label: 'Pix (Receber no Local)', desc: 'Pagamento instantâneo via QR Code', icon: Smartphone, color: 'bg-[#32BCAD]' },
+                    { id: 'pay-cash', value: 'cash', label: 'Dinheiro (Receber no Local)', desc: 'Pagamento físico ao entregador', icon: Banknote, color: 'bg-emerald-500' }
+                ].map(opt => (
+                    <div key={opt.id} className="relative">
+                        <RadioGroupItem value={opt.value} id={opt.id} className="sr-only" />
+                        <Label htmlFor={opt.id} className={cn("flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer", paymentMethod === opt.value ? "border-primary bg-primary/5 shadow-sm" : "border-muted bg-card")}>
+                            <div className={cn("size-10 rounded-xl flex items-center justify-center text-white", paymentMethod === opt.value ? opt.color : "bg-muted text-muted-foreground")}>
+                                <opt.icon className="size-5" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-bold text-sm">{opt.label}</p>
+                                <p className="text-[10px] text-muted-foreground font-medium">{opt.desc}</p>
+                            </div>
+                        </Label>
+                    </div>
+                ))}
             </RadioGroup>
           </section>
           
           <section className="space-y-4">
-            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">3. Detalhes da Coleta</h2>
-            <Card className="p-5 rounded-2xl border-none shadow-sm bg-muted/30">
-              <div className="space-y-4">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">3. Destino</h2>
+            <Card className="p-5 rounded-2xl border-none shadow-sm bg-muted/30 space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="pickup_street" className="text-xs font-bold text-muted-foreground ml-1">Rua de Coleta (Opcional)</Label>
-                  <div className="relative">
-                    <CircleDot className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-                    <Input id="pickup_street" name="pickup_street" placeholder={userProfile?.address ? "Usar endereço salvo" : "Rua de Coleta, 456"} className="pl-10 h-12 rounded-xl bg-background" />
-                  </div>
+                  <Label htmlFor="dropoff_street" className="text-xs font-bold text-muted-foreground ml-1">Rua</Label>
+                  <Input id="dropoff_street" name="dropoff_street" placeholder="Apenas letras" className="h-12 rounded-xl bg-background" required value={dropoffStreet} onChange={(e) => setDropoffStreet(e.target.value.replace(/[^a-zA-ZÀ-ÿ\s]/g, ""))} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pickup_number" className="text-xs font-bold text-muted-foreground ml-1">Número</Label>
-                    <Input id="pickup_number" name="pickup_number" placeholder="Ex: Loja 3" className="h-12 rounded-xl bg-background" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pickup_neighborhood" className="text-xs font-bold text-muted-foreground ml-1">Bairro</Label>
-                    <Input id="pickup_neighborhood" name="pickup_neighborhood" placeholder="Centro" className="h-12 rounded-xl bg-background" />
-                  </div>
+                  <div className="space-y-1.5"><Label htmlFor="dropoff_number" className="text-xs font-bold text-muted-foreground ml-1">Número</Label><Input id="dropoff_number" name="dropoff_number" placeholder="Ex: 123" className="h-12 rounded-xl bg-background" required value={dropoffNumber} onChange={(e) => setDropoffNumber(e.target.value)}/></div>
+                  <div className="space-y-1.5"><Label htmlFor="dropoff_neighborhood" className="text-xs font-bold text-muted-foreground ml-1">Bairro</Label><Input id="dropoff_neighborhood" name="dropoff_neighborhood" placeholder="Centro" className="h-12 rounded-xl bg-background" required/></div>
                 </div>
-              </div>
+                <div className="space-y-1.5"><Label htmlFor="observations" className="text-xs font-bold text-muted-foreground ml-1">Obs (Apto, Bloco)</Label><Textarea id="observations" name="observations" placeholder="Ex: Deixar na portaria..." className="rounded-xl bg-background min-h-[80px] resize-none" /></div>
             </Card>
           </section>
 
-          <section className="space-y-4">
-            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 font-headline">4. Detalhes do Destino</h2>
-            <Card className="p-5 rounded-2xl border-none shadow-sm bg-muted/30">
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="dropoff_street" className="text-xs font-bold text-muted-foreground ml-1">Endereço de Entrega</Label>
-                  <div className="relative">
-                    <Map className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-                    <Input 
-                      id="dropoff_street" 
-                      name="dropoff_street" 
-                      placeholder="Rua Principal" 
-                      className="pl-10 h-12 rounded-xl bg-background" 
-                      required 
-                      value={dropoffStreet}
-                      onChange={(e) => {
-                        const filteredValue = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s]/g, "");
-                        setDropoffStreet(filteredValue);
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="dropoff_number" className="text-xs font-bold text-muted-foreground ml-1">Número</Label>
-                    <Input 
-                      id="dropoff_number" 
-                      name="dropoff_number" 
-                      placeholder="Ex: 123" 
-                      className="h-12 rounded-xl bg-background" 
-                      required
-                      value={dropoffNumber}
-                      onChange={(e) => setDropoffNumber(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="dropoff_neighborhood" className="text-xs font-bold text-muted-foreground ml-1">Bairro</Label>
-                    <Input id="dropoff_neighborhood" name="dropoff_neighborhood" placeholder="Centro" className="h-12 rounded-xl bg-background" required/>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="observations" className="text-xs font-bold text-muted-foreground ml-1">Observações (Apto, Bloco, etc)</Label>
-                  <Textarea id="observations" name="observations" placeholder="Ex: Apto 4B, Bloco 2, deixar na portaria..." className="rounded-xl bg-background min-h-[100px] resize-none" />
-                </div>
-              </div>
-            </Card>
-          </section>
-
-          <div className="pt-6">
-            <Button 
-                type="submit" 
-                disabled={isSubmitting || userLoading || selectedPrice === null || paymentMethod === null || blockStatus.isBlocked} 
-                className="w-full h-16 text-lg font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95"
-            >
-                {isSubmitting ? <Loader2 className="animate-spin size-6" /> : (
-                    <>
-                        SOLICITAR ENTREGA
-                        <ArrowRight className="size-6 ml-3" />
-                    </>
-                )}
-            </Button>
-            <p className="text-center text-[10px] text-muted-foreground mt-4 px-8 uppercase font-bold tracking-widest opacity-60">
-              Ao confirmar, a central Lucas-Expresso enviará o motoboy mais próximo.
-            </p>
-          </div>
+          <Button type="submit" disabled={isSubmitting || userLoading || selectedPrice === null || paymentMethod === null} className="w-full h-16 text-lg font-black rounded-2xl shadow-xl active:scale-95 transition-all">
+            {isSubmitting ? <Loader2 className="animate-spin size-6" /> : <>SOLICITAR ENTREGA <ArrowRight className="size-6 ml-3" /></>}
+          </Button>
         </form>
       </main>
     </div>

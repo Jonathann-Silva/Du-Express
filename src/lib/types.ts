@@ -2,7 +2,7 @@
 import { Timestamp } from "firebase/firestore";
 
 export type DeliveryStatus = 'pending' | 'accepted' | 'in-progress' | 'finished' | 'refused';
-export type PaymentMethod = 'credit' | 'collect';
+export type PaymentMethod = 'credit' | 'pix' | 'cash';
 
 export type Delivery = {
   id: string;
