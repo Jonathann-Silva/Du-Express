@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -12,6 +13,7 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
   const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const userRole = userProfile?.role;
+  const isOnline = userProfile?.status === 'online';
   const lastUpdateRef = useRef<number>(0);
 
   useEffect(() => {
@@ -19,15 +21,17 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
       // Solicita permissão de notificação
       requestPermissionAndSaveToken(user.uid);
 
-      // Sincronização de localização em tempo real com THROTTLE (30 segundos)
-      // Isso reduz drasticamente o número de escritas no banco de dados
+      // Sincronização de localização em tempo real com THROTTLE agressivo (2 minutos)
+      // Otimização para plano gratuito do Firebase: 40 usuários x 1 update/2min = 28.800 escritas/dia
       let watchId: number;
-      if (navigator.geolocation && firestore) {
+      
+      // SÓ RASTREIA SE ESTIVER ONLINE
+      if (navigator.geolocation && firestore && isOnline) {
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const now = Date.now();
-            // Apenas atualiza se passou 30 segundos desde a última gravação
-            if (now - lastUpdateRef.current < 30000) return;
+            // Apenas atualiza se passou 2 minutos desde a última gravação (120.000ms)
+            if (now - lastUpdateRef.current < 120000) return;
             
             lastUpdateRef.current = now;
             const userRef = doc(firestore, 'users', user.uid);
@@ -42,7 +46,7 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
             });
           },
           (err) => console.warn("Erro ao rastrear localização GPS:", err),
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 }
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
         );
       }
 
@@ -50,7 +54,7 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
         if (watchId) navigator.geolocation.clearWatch(watchId);
       };
     }
-  }, [user?.uid, userRole, firestore]);
+  }, [user?.uid, userRole, firestore, isOnline]);
 
   return (
     <MobileLayout>
