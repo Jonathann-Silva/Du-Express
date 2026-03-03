@@ -1,8 +1,8 @@
-// scripts necessários para o Firebase Worker
+// Script para rodar o Firebase Messaging em segundo plano (Browser Service Worker)
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-// Configuração idêntica à do seu projeto
+// Configuração idêntica ao src/firebase/config.ts
 firebase.initializeApp({
   apiKey: "AIzaSyBviQrq6B1yVM3SrEyrAnvpbcqyOwEj5KM",
   authDomain: "studio-7544233787-fa02d.firebaseapp.com",
@@ -14,32 +14,16 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Lógica para lidar com mensagens recebidas com APP MINIMIZADO OU FECHADO
+// Listener para exibir notificações quando o navegador estiver em segundo plano ou fechado
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Mensagem recebida em background: ', payload);
-  
-  const title = payload.notification?.title || payload.data?.title || 'Lucas-Expresso';
-  const body = payload.notification?.body || payload.data?.body || 'Novo pedido recebido!';
-  
+  console.log('[firebase-messaging-sw.js] Notificação em background:', payload);
+
+  const notificationTitle = payload.notification.title || 'Lucas-Expresso';
   const notificationOptions = {
-    body: body,
+    body: payload.notification.body || 'Você recebeu uma nova atualização.',
     icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
-    badge: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
-    tag: 'lucas-expresso-notificacao',
-    renotify: true,
-    data: {
-      url: payload.data?.link || '/'
-    }
+    badge: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s'
   };
 
-  // O 'return' é OBRIGATÓRIO para o iOS não ignorar a notificação
-  return self.registration.showNotification(title, notificationOptions);
-});
-
-// Listener para abrir o app ao clicar na notificação
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.openWindow(event.notification.data.url)
-  );
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
