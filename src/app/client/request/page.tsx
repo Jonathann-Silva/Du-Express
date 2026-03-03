@@ -34,7 +34,7 @@ export default function RequestDeliveryPage() {
   const [dropoffStreet, setDropoffStreet] = useState("");
   const [dropoffNumber, setDropoffNumber] = useState("");
 
-  // Busca faturas para verificar bloqueio (Sempre busca todas as finalizadas para garantir inclusão de missing fields)
+  // Busca faturas para verificar bloqueio
   const deliveriesQuery = useMemo(() => {
     if (!firestore || !user?.uid) return null;
     return query(
@@ -44,7 +44,7 @@ export default function RequestDeliveryPage() {
     );
   }, [firestore, user?.uid]);
 
-  const { data: finishedDeliveries, loading: loadingUnpaid } = useCollection<Delivery>(deliveriesQuery);
+  const { data: finishedDeliveries } = useCollection<Delivery>(deliveriesQuery);
 
   const unpaidDeliveries = useMemo(() => {
     return finishedDeliveries?.filter(d => d.paidByClient === false || d.paidByClient === undefined) || [];
