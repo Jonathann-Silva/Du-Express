@@ -52,7 +52,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        {/* LINK PARA O MANIFESTO - ESSENCIAL PARA NOTIFICAÇÕES NO IOS */}
+        {/* LINK PARA O MANIFESTO - ESSENCIAL PARA PWAs E NOTIFICAÇÕES */}
         <link rel="manifest" href="/manifest.json" />
         
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -62,7 +62,7 @@ export default function RootLayout({
         <link href='https://unpkg.com/maplibre-gl/dist/maplibre-gl.css' rel='stylesheet' />
         <link rel="apple-touch-icon" href={APP_ICON_URL} />
         
-        {/* Metatags específicas para iOS aparecer como App */}
+        {/* Metatags específicas para iOS aparecer como App e receber push */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
