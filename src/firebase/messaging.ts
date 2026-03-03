@@ -3,66 +3,60 @@ import { getMessaging, getToken, isSupported, onMessage } from 'firebase/messagi
 import { getApp } from 'firebase/app';
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
 
-// Chave pública VAPID (essencial para navegadores Chrome/Safari)
 const VAPID_KEY = 'BIiPXefnrJB_RH2iDZNKlvJXUTUFaHNWPkgdqv4WRYSMB7OvzX_GPf0WylTwE23_uYwcDsRAFpijfDi0tE4gEhg';
 
-/**
- * Solicita permissão de notificação e registra o token do dispositivo no Firestore do usuário.
- */
 export const requestPermissionAndSaveToken = async (userId: string) => {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !userId) return;
 
   try {
     const supported = await isSupported();
-    if (!supported) {
-      console.warn('FCM: Notificações push não são suportadas neste navegador.');
-      return;
-    }
+    if (!supported) return;
     
     const app = getApp();
     const firestore = getFirestore(app);
     const messaging = getMessaging(app);
 
-    // 1. Pede permissão ao usuário
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
-      // 2. Registra o Service Worker explicitamente
+      // AJUSTE: Forçamos a atualização do Service Worker se houver mudanças
       const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-        scope: '/'
+        updateViaCache: 'none'
       });
       
-      // Aguarda o SW estar pronto
-      await navigator.serviceWorker.ready;
+      // AJUSTE: Garantimos que o SW está ativo e "controlando" a página
+      const activeRegistration = await navigator.serviceWorker.ready;
 
-      // 3. Obtém o Token Único do Aparelho (FCM Token)
       const currentToken = await getToken(messaging, {
-        serviceWorkerRegistration: registration,
+        serviceWorkerRegistration: activeRegistration,
         vapidKey: VAPID_KEY
       });
       
       if (currentToken) {
-        // 4. SALVA O TOKEN NO DOCUMENTO DO USUÁRIO NO FIRESTORE
         const userDocRef = doc(firestore, 'users', userId);
-        await setDoc(userDocRef, { fcmToken: currentToken }, { merge: true });
-        console.log('FCM: Token registrado e salvo no Firestore:', currentToken);
+        
+        // Mantemos o seu merge:true que é excelente para o Admin
+        await setDoc(userDocRef, { 
+          fcmToken: currentToken,
+          lastTokenUpdate: new Date().toISOString(),
+          status: 'online' 
+        }, { merge: true });
+        
+        console.log('FCM: Token registrado para UID:', userId);
 
-        // Handler para mensagens enquanto o app está aberto (foreground)
         onMessage(messaging, (payload) => {
-          console.log('FCM: Mensagem recebida em primeiro plano:', payload);
-          // Notificação nativa em primeiro plano
-          new Notification(payload.notification?.title || 'Lucas-Expresso', {
-            body: payload.notification?.body,
-            icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s'
-          });
+          console.log('FCM: Foreground message', payload);
+          // Notificação nativa para quando o app está aberto
+          if (Notification.permission === 'granted') {
+             new Notification(payload.notification?.title || 'Lucas-Expresso', {
+               body: payload.notification?.body,
+               icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s'
+             });
+          }
         });
-      } else {
-        console.warn('FCM: Nenhum token de registro disponível. Verifique as permissões.');
       }
-    } else {
-      console.warn('FCM: Permissão de notificação negada pelo usuário.');
     }
   } catch (err) {
-    console.error('FCM: Erro ao configurar notificações push:', err);
+    console.error('FCM: Erro ao configurar:', err);
   }
 };

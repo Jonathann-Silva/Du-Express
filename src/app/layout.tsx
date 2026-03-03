@@ -52,8 +52,8 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        {/* LINK PARA O MANIFESTO - ESSENCIAL PARA PWAs E NOTIFICAÇÕES */}
-        <link rel="manifest" href="/manifest.json" />
+        {/* LINK PARA O MANIFESTO - Ajustado com crossOrigin para evitar erro de CORS em workstation */}
+        <link rel="manifest" href="/manifest.json" crossOrigin="use-credentials" />
         
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
