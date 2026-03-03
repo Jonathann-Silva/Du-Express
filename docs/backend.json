@@ -6,139 +6,64 @@
       "description": "Represents a user's profile in the system.",
       "type": "object",
       "properties": {
-        "uid": {
-          "type": "string",
-          "description": "The user's unique ID."
-        },
-        "email": {
-          "type": "string",
-          "format": "email",
-          "description": "The user's email address."
-        },
-        "displayName": {
-          "type": "string",
-          "description": "The user's display name."
-        },
-        "photoURL": {
-          "type": "string",
-          "format": "uri",
-          "description": "URL of the user's profile picture."
-        },
-        "role": {
-          "type": "string",
-          "enum": ["admin", "client", "courier"],
-          "description": "The role of the user."
-        },
-        "userType": {
-          "type": "string",
-          "description": "The user's type, like 'Fast Food' for a client or 'Motorcycle' for a courier."
-        },
-        "cnpj": {
-          "type": "string",
-          "description": "The user's CNPJ or Tax ID."
-        },
-        "address": {
-          "type": "string",
-          "description": "The user's primary address, typically for clients (stores)."
-        },
-        "fcmToken": {
-          "type": "string",
-          "description": "Firebase Cloud Messaging token for push notifications."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "deliveryRate": {
-          "type": "number",
-          "description": "Specific delivery rate for this user, if different from the default."
-        },
-        "condoRateGoldemItalian": {
-          "type": "number",
-          "description": "Delivery rate for Goldem and Italian Ville condominiums."
-        },
-        "condoRateMonteRey": {
-          "type": "number",
-          "description": "Delivery rate for Monte Rey and Bem Viver condominiums."
-        },
-        "rateAricanduva": {
-          "type": "number",
-          "description": "Delivery rate for Aricanduva."
-        },
-        "rateApucarana": {
-          "type": "number",
-          "description": "Delivery rate for Apucarana."
-        },
-        "rateSabaudia": {
-          "type": "number",
-          "description": "Delivery rate for Sabáudia."
-        },
-        "rateRolandia": {
-          "type": "number",
-          "description": "Delivery rate for Rolândia."
-        },
-        "rateLondrina": {
-          "type": "number",
-          "description": "Delivery rate for Londrina."
-        },
-        "status": {
-          "type": "string",
-          "enum": [
-            "online",
-            "offline"
-          ],
-          "description": "User's online status."
-        }
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "role": { "type": "string", "enum": ["admin", "client", "courier"] },
+        "userType": { "type": "string" },
+        "cnpj": { "type": "string" },
+        "address": { "type": "string" },
+        "fcmToken": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "deliveryRate": { "type": "number" },
+        "status": { "type": "string", "enum": ["online", "offline"] }
       },
       "required": ["uid", "role", "createdAt"]
+    },
+    "chatMessage": {
+      "title": "Chat Message",
+      "description": "A single message in a chat room.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["senderId", "text", "createdAt"]
+    },
+    "chatRoom": {
+      "title": "Chat Room",
+      "description": "Metadata for a chat conversation.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Format: admin_{userId}" },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "lastMessage": { "type": "string" },
+        "lastMessageAt": { "type": "string", "format": "date-time" },
+        "unreadCountAdmin": { "type": "number" },
+        "unreadCountUser": { "type": "number" }
+      }
     },
     "delivery": {
       "title": "Delivery",
       "description": "Represents a delivery request.",
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "pickup": {
-          "type": "string"
-        },
-        "dropoff": {
-          "type": "string"
-        },
-        "price": {
-          "type": "number"
-        },
-        "status": {
-          "type": "string",
-          "enum": ["pending", "accepted", "in-progress", "finished", "refused"]
-        },
-        "clientId": {
-          "type": "string",
-          "description": "The UID of the client who requested the delivery."
-        },
-        "courierId": {
-          "type": "string",
-          "description": "The UID of the courier assigned to the delivery."
-        },
-        "createdAt": {
-            "type": "string",
-            "format": "date-time"
-        },
-        "observations": {
-          "type": "string"
-        },
-        "paid": {
-          "type": "boolean"
-        },
-        "finishedAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "cancelRequested": {
-          "type": "boolean",
-          "description": "Indicates if the client has requested to cancel this delivery."
-        }
+        "id": { "type": "string" },
+        "pickup": { "type": "string" },
+        "dropoff": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "in-progress", "finished", "refused"] },
+        "clientId": { "type": "string" },
+        "courierId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "observations": { "type": "string" },
+        "paid": { "type": "boolean" },
+        "cancelRequested": { "type": "boolean" }
       },
       "required": ["pickup", "dropoff", "price", "status", "clientId", "createdAt"]
     },
@@ -148,87 +73,24 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "The UID of the user this notification is for." },
+        "userId": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "read": { "type": "boolean" },
-        "icon": { "type": "string", "enum": ["package", "wallet", "alert"] },
-        "link": { "type": "string", "format": "uri", "description": "Optional link to navigate to." }
+        "icon": { "type": "string", "enum": ["package", "wallet", "alert", "message"] }
       },
       "required": ["userId", "title", "description", "createdAt", "read", "icon"]
-    },
-    "appStatus": {
-      "title": "Application Status",
-      "description": "Publicly accessible status information for the app.",
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "adminOnline": {
-          "type": "boolean",
-          "description": "Indicates if an admin is currently online."
-        },
-        "lastUpdated": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": ["adminOnline", "lastUpdated"]
-    },
-    "appSetting": {
-      "title": "Application Setting",
-      "description": "General application settings, security keys, and system rules.",
-      "type": "object",
-      "properties": {
-        "password": {
-          "type": "string"
-        },
-        "deliveryTimeLimit": {
-          "type": "number",
-          "description": "Maximum minutes allowed for a delivery route."
-        },
-        "autoCancel": {
-          "type": "boolean",
-          "description": "Whether to automatically cancel pending requests after a timeout."
-        }
-      }
     }
   },
   "auth": {
     "providers": ["anonymous", "emailPassword"]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/userProfile"
-      },
-      "description": "Stores public profile information for each user."
-    },
-    "/deliveries/{deliveryId}": {
-      "schema": {
-        "$ref": "#/entities/delivery"
-      },
-      "description": "Stores all delivery requests."
-    },
-    "/notifications/{notificationId}": {
-      "schema": {
-        "$ref": "#/entities/notification"
-      },
-      "description": "Stores notifications for all users."
-    },
-    "/status/{statusId}": {
-      "schema": {
-        "$ref": "#/entities/appStatus"
-      },
-      "description": "Stores public status information for the application, like admin availability."
-    },
-    "/settings/{settingId}": {
-      "schema": {
-        "$ref": "#/entities/appSetting"
-      },
-      "description": "Stores sensitive application configurations and system rules."
-    }
+    "/users/{userId}": { "schema": { "$ref": "#/entities/userProfile" }, "description": "Stores user profiles." },
+    "/deliveries/{deliveryId}": { "schema": { "$ref": "#/entities/delivery" }, "description": "Stores delivery requests." },
+    "/notifications/{notificationId}": { "schema": { "$ref": "#/entities/notification" }, "description": "Stores notifications." },
+    "/chats/{chatId}": { "schema": { "$ref": "#/entities/chatRoom" }, "description": "Chat sessions metadata." },
+    "/chats/{chatId}/messages/{messageId}": { "schema": { "$ref": "#/entities/chatMessage" }, "description": "Individual chat messages." }
   }
 }

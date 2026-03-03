@@ -1,15 +1,16 @@
+
 'use client';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Truck, Wallet, Users, Settings } from 'lucide-react';
+import { LayoutDashboard, Truck, Wallet, Users, Settings, MessageSquare } from 'lucide-react';
 
 const navItems = [
   { href: '/admin', label: 'Painel', icon: LayoutDashboard },
   { href: '/admin/deliveries', label: 'Entregas', icon: Truck },
   { href: '/admin/finance', label: 'Finanças', icon: Wallet },
+  { href: '/admin/chats', label: 'Chats', icon: MessageSquare },
   { href: '/admin/users', label: 'Usuários', icon: Users },
-  { href: '/admin/settings', label: 'Ajustes', icon: Settings },
 ];
 
 export function AdminNav() {

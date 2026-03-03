@@ -16,24 +16,30 @@ export type Delivery = {
   acceptedAt?: Timestamp;
   finishedAt?: Timestamp;
   observations?: string;
-  paid?: boolean; // Pago para o motoboy
-  paidByClient?: boolean; // Pago pela loja ao admin
+  paid?: boolean; 
+  paidByClient?: boolean;
   paymentMethod: PaymentMethod;
-  cancelRequested?: boolean; // Se o cliente solicitou cancelamento
+  cancelRequested?: boolean;
 };
 
-export type AdminDeliveryStatus = 'pending' | 'accepted' | 'in-progress' | 'finished' | 'refused';
-
-export type AdminDelivery = {
+export type ChatMessage = {
   id: string;
-  clientName: string;
-  status: AdminDeliveryStatus;
-  courier?: {
-    name: string;
-    avatarId: string;
-  };
-  requestedTime: string;
-  location?: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  createdAt: Timestamp;
+  read: boolean;
+};
+
+export type ChatRoom = {
+  id: string;
+  participants: string[];
+  lastMessage: string;
+  lastMessageAt: Timestamp;
+  unreadCountAdmin: number;
+  unreadCountUser: number;
+  userName?: string; // Cache for display
+  userRole?: 'client' | 'courier'; // Cache for display
 };
 
 export type UserProfile = {
@@ -63,28 +69,6 @@ export type UserProfile = {
   };
 };
 
-export type Financials = {
-  totalRevenue: number;
-  totalPayouts: number;
-  pendingPayouts: number;
-  monthlyNetMargin: number;
-  marginPercentage: number;
-  chartData: { month: string; revenue: number }[];
-};
-
-export type HistoryReport = {
-    id: string;
-    courier: string;
-    status: 'Finished' | 'Refused';
-    timestamp: string;
-    dateGroup: 'Today' | 'Yesterday';
-    pickup: string;
-    dropoff: string;
-    client: string;
-    price: number;
-    reason?: string;
-}
-
 export type Notification = {
   id: string;
   userId: string;
@@ -92,7 +76,7 @@ export type Notification = {
   description: string;
   createdAt: Timestamp;
   read: boolean;
-  icon: 'package' | 'wallet' | 'alert';
+  icon: 'package' | 'wallet' | 'alert' | 'message';
   link?: string;
 };
 

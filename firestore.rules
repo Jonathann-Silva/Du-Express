@@ -18,89 +18,49 @@ service cloud.firestore {
                      && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    function isCourier() {
-      return isAuth() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) 
-                     && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'courier';
-    }
-
     // --- Collection Rules ---
 
     // USERS
     match /users/{userId} {
       allow get: if isAuth();
-      // Allow list for authenticated users so clients can find admins/couriers
       allow list: if isAuth();
       allow write: if isOwner(userId) || isAdmin();
     }
 
+    // CHATS
+    match /chats/{chatId} {
+      // Regra de isolamento: admin vê tudo, usuário só vê chat que contém seu ID
+      allow read, write: if isAdmin() || (isAuth() && chatId == 'admin_' + request.auth.uid);
+      
+      match /messages/{messageId} {
+        allow read, write: if isAdmin() || (isAuth() && chatId == 'admin_' + request.auth.uid);
+      }
+    }
+
     // DELIVERIES
     match /deliveries/{deliveryId} {
-      // A client can create a delivery for themselves.
       allow create: if isAuth() && request.resource.data.clientId == request.auth.uid;
-      
-      // An admin can perform any update.
-      allow update: if isAdmin();
-      
-      // --- Courier Rules ---
-      
-      // 1. Courier: Accept a pending task (atribuir-se ao pedido)
-      allow update: if isCourier()
-                    && resource.data.status == 'pending'
-                    && (request.resource.data.status == 'accepted' || request.resource.data.status == 'in-progress')
-                    && request.resource.data.courierId == request.auth.uid;
-
-      // 2. Courier: Update status during the delivery process
-      allow update: if isCourier()
-                    && resource.data.courierId == request.auth.uid
-                    && (
-                      (request.resource.data.status == 'in-progress')
-                      || (request.resource.data.status == 'finished')
-                    );
-
-      // --- Client Rules ---
-      
-      // A client can request cancellation if it's still pending
-      allow update: if isAuth() 
-                    && resource.data.clientId == request.auth.uid
-                    && resource.data.status == 'pending'
-                    && request.resource.data.cancelRequested == true
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cancelRequested']);
-
-      // Read rules for various roles
-      allow get: if isAdmin() 
-                 || (isAuth() && resource.data.clientId == request.auth.uid) 
-                 || (isAuth() && resource.data.courierId == request.auth.uid);
-
-      // Queries are allowed, but will be filtered by the 'get' rules above.
+      allow update: if isAdmin() || (isAuth() && (resource.data.clientId == request.auth.uid || resource.data.courierId == request.auth.uid));
+      allow get: if isAdmin() || (isAuth() && (resource.data.clientId == request.auth.uid || resource.data.courierId == request.auth.uid));
       allow list: if isAuth();
-      
       allow delete: if false;
     }
 
     // NOTIFICATIONS
     match /notifications/{notificationId} {
-      // Anyone authenticated can create a notification
       allow create: if isAuth();
-      // User can only read/list their own.
-      allow get, list, update: if isOwner(resource.data.userId);
+      allow get, list, update: if isOwner(resource.data.userId) || isAdmin();
       allow delete: if false;
     }
 
-    // STATUS
+    // STATUS & SETTINGS
     match /status/{statusId} {
-      // Allow anyone to see if admin is online for better UX
       allow get: if true;
       allow write: if isAdmin();
-      allow list, delete: if false;
     }
-
-    // SETTINGS (Sensitive Info)
     match /settings/{settingId} {
-      // Rules (like delivery time limit) can be read by anyone authenticated
-      // Finance settings remain restricted to admins
       allow get: if isAdmin() || (isAuth() && settingId == 'rules');
       allow write: if isAdmin();
-      allow list, delete: if false;
     }
   }
 }

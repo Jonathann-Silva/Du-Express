@@ -1,12 +1,13 @@
+
 'use client';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { List, Wallet, User, Map } from 'lucide-react';
+import { List, Wallet, User, MessageSquare } from 'lucide-react';
 
 const navItems = [
   { href: '/courier', label: 'Tarefas', icon: List },
-  { href: '/courier/navigation', label: 'Mapa', icon: Map },
+  { href: '/courier/chat', label: 'Chat', icon: MessageSquare },
   { href: '/courier/earnings', label: 'Ganhos', icon: Wallet },
   { href: '/courier/profile', label: 'Perfil', icon: User },
 ];
