@@ -2,16 +2,23 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { MessageSquare, Search, Building, Bike, Loader2, ArrowLeft, ChevronRight } from 'lucide-react';
-import Link from 'next/link';
+import { MessageSquare, Search, Building, Bike, Loader2, ArrowLeft, Plus, UserPlus, X } from 'lucide-react';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChatInterface } from '@/components/Chat/ChatInterface';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,14 +28,26 @@ export default function AdminChatListPage() {
   const { userProfile } = useUser();
   const firestore = useFirestore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedChat, setSelectedChat] = useState<ChatRoom | null>(null);
+  const [contactSearch, setContactSearch] = useState('');
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(null);
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
 
+  // Busca salas de chat existentes
   const chatsQuery = useMemo(() => {
     if (!firestore || userProfile?.role !== 'admin') return null;
     return query(collection(firestore, 'chats'), orderBy('lastMessageAt', 'desc'), limit(50));
   }, [firestore, userProfile]);
 
   const { data: rooms, loading } = useCollection<ChatRoom>(chatsQuery);
+
+  // Busca todos os usuários para o "Novo Chat"
+  const usersQuery = useMemo(() => {
+    if (!firestore || userProfile?.role !== 'admin') return null;
+    return query(collection(firestore, 'users'), where('role', 'in', ['client', 'courier']));
+  }, [firestore, userProfile]);
+
+  const { data: allUsers, loading: loadingUsers } = useCollection<UserProfile>(usersQuery);
 
   const filteredRooms = useMemo(() => {
     if (!rooms) return [];
@@ -37,29 +56,98 @@ export default function AdminChatListPage() {
     );
   }, [rooms, searchQuery]);
 
-  // Prepara o recipientProfile para o ChatInterface
-  const recipientProfile = useMemo(() => {
-    if (!selectedChat) return null;
-    const userId = selectedChat.id.replace('admin_', '');
-    return {
-      uid: userId,
-      displayName: selectedChat.userName,
-      role: selectedChat.userRole,
-      photoURL: null, // ChatRoom doesn't store photo, we could fetch but for MVP fallback is ok
-    } as UserProfile;
-  }, [selectedChat]);
+  const filteredContacts = useMemo(() => {
+    if (!allUsers) return [];
+    return allUsers.filter(u => 
+      !contactSearch || u.displayName?.toLowerCase().includes(contactSearch.toLowerCase())
+    );
+  }, [allUsers, contactSearch]);
+
+  const handleSelectRoom = (room: ChatRoom) => {
+    setSelectedChatId(room.id);
+    setSelectedRecipient({
+      uid: room.id.replace('admin_', ''),
+      displayName: room.userName,
+      role: room.userRole as any,
+      photoURL: null,
+    } as UserProfile);
+  };
+
+  const handleStartNewChat = (contact: UserProfile) => {
+    setSelectedChatId(`admin_${contact.uid}`);
+    setSelectedRecipient(contact);
+    setIsNewChatOpen(false);
+  };
 
   return (
     <div className="flex h-full bg-background overflow-hidden">
       {/* Sidebar de Chats */}
       <aside className={cn(
         "w-full md:w-80 border-r flex flex-col transition-all",
-        selectedChat ? "hidden md:flex" : "flex"
+        selectedChatId ? "hidden md:flex" : "flex"
       )}>
         <header className="p-4 border-b shrink-0">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-xl font-bold font-headline">Conversas</h1>
-            <MessageSquare className="text-primary size-5" />
+            
+            <Dialog open={isNewChatOpen} onOpenChange={setIsNewChatOpen}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-primary/10">
+                  <UserPlus size={20} />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="p-0 overflow-hidden max-w-sm rounded-3xl">
+                <DialogHeader className="p-4 bg-muted/30 border-b">
+                  <DialogTitle className="font-headline">Iniciar Conversa</DialogTitle>
+                </DialogHeader>
+                <div className="p-4 border-b">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
+                    <Input 
+                      placeholder="Buscar contato..." 
+                      className="pl-9 bg-muted/50 border-none h-10 rounded-xl"
+                      value={contactSearch}
+                      onChange={(e) => setContactSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <ScrollArea className="h-80">
+                  <div className="p-2 space-y-1">
+                    {loadingUsers ? (
+                      <div className="p-4 space-y-3">
+                        <Skeleton className="h-12 w-full rounded-xl" />
+                        <Skeleton className="h-12 w-full rounded-xl" />
+                      </div>
+                    ) : filteredContacts.length > 0 ? (
+                      filteredContacts.map((contact) => (
+                        <button
+                          key={contact.uid}
+                          onClick={() => handleStartNewChat(contact)}
+                          className="w-full p-3 flex items-center gap-3 hover:bg-muted/50 rounded-xl transition-colors text-left"
+                        >
+                          <Avatar className="size-10 rounded-lg">
+                            <AvatarImage src={contact.photoURL || ''} />
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {contact.role === 'client' ? <Building size={18} /> : <Bike size={18} />}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm truncate">{contact.displayName}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">
+                              {contact.role === 'client' ? 'Loja' : 'Motoboy'} • {contact.userType}
+                            </p>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="text-center py-10 text-muted-foreground">
+                        <p className="text-xs">Nenhum contato encontrado</p>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
@@ -83,10 +171,10 @@ export default function AdminChatListPage() {
             filteredRooms.map((room) => (
               <button
                 key={room.id}
-                onClick={() => setSelectedChat(room)}
+                onClick={() => handleSelectRoom(room)}
                 className={cn(
                   "w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors border-b text-left",
-                  selectedChat?.id === room.id && "bg-primary/5 border-l-4 border-l-primary"
+                  selectedChatId === room.id && "bg-primary/5 border-l-4 border-l-primary"
                 )}
               >
                 <Avatar className="size-12 rounded-xl">
@@ -122,19 +210,19 @@ export default function AdminChatListPage() {
       {/* Janela de Chat */}
       <main className={cn(
         "flex-1 flex flex-col bg-muted/10 transition-all",
-        !selectedChat ? "hidden md:flex items-center justify-center" : "flex"
+        !selectedChatId ? "hidden md:flex items-center justify-center" : "flex"
       )}>
-        {selectedChat ? (
+        {selectedChatId && selectedRecipient ? (
           <div className="flex flex-col h-full w-full">
             <div className="p-4 border-b bg-background flex items-center gap-2 md:hidden">
-              <Button variant="ghost" size="icon" onClick={() => setSelectedChat(null)}><ArrowLeft /></Button>
-              <h3 className="font-bold text-sm">{selectedChat.userName}</h3>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedChatId(null)}><ArrowLeft /></Button>
+              <h3 className="font-bold text-sm">{selectedRecipient.displayName}</h3>
             </div>
             <div className="flex-1 p-4 overflow-hidden max-w-4xl mx-auto w-full">
               <ChatInterface 
-                chatId={selectedChat.id} 
-                recipientId={selectedChat.id.replace('admin_', '')}
-                recipientProfile={recipientProfile}
+                chatId={selectedChatId} 
+                recipientId={selectedRecipient.uid}
+                recipientProfile={selectedRecipient}
               />
             </div>
           </div>
