@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -17,7 +16,9 @@ import {
   PackageCheck,
   Camera,
   Edit,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Smartphone,
+  AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -214,6 +215,8 @@ export default function ClientSettingsPage() {
         );
     }
 
+    const isDeviceRegistered = !!userProfile?.fcmToken;
+
     return (
         <div className="flex flex-col h-full bg-background">
             <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b px-4 py-4 flex items-center justify-between">
@@ -294,6 +297,35 @@ export default function ClientSettingsPage() {
                             Cliente Verificado
                         </span>
                     </div>
+                </section>
+
+                {/* Device Registration Status Indicator */}
+                <section className="px-4 mb-8">
+                    <div className="flex items-center gap-2 mb-4 px-1">
+                        <Smartphone className="size-4 text-primary" />
+                        <h3 className="text-base font-bold font-headline">Status do Dispositivo</h3>
+                    </div>
+                    <Card className={cn(
+                        "p-4 border-none shadow-sm flex items-center gap-4",
+                        isDeviceRegistered ? "bg-emerald-500/10 text-emerald-700" : "bg-amber-500/10 text-amber-700"
+                    )}>
+                        <div className={cn(
+                            "size-10 rounded-xl flex items-center justify-center",
+                            isDeviceRegistered ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
+                        )}>
+                            {isDeviceRegistered ? <CheckCircle2 className="size-5" /> : <AlertCircle className="size-5" />}
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-bold leading-none">
+                                {isDeviceRegistered ? "Notificações Ativas" : "Registro Pendente"}
+                            </p>
+                            <p className="text-[10px] opacity-80 mt-1 font-medium">
+                                {isDeviceRegistered 
+                                    ? "Este celular está configurado para receber alertas de pedidos e chats."
+                                    : "Clique em permitir notificações no seu navegador para habilitar alertas."}
+                            </p>
+                        </div>
+                    </Card>
                 </section>
 
                 {/* Financial Overview */}

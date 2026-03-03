@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -6,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, 
-  User as UserIcon, 
   LogOut, 
   Palette, 
   Image as ImageIcon, 
@@ -49,6 +47,7 @@ import { useUser, useAuth, useFirestore, useDoc } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, updateDoc, serverTimestamp, setDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 export default function AdminSettingsPage() {
   const { userProfile: adminUser, loading: adminLoading } = useUser();
@@ -616,16 +615,4 @@ export default function AdminSettingsPage() {
       </main>
     </div>
   );
-}
-
-function Badge({ children, variant = 'default', className }: { children: React.ReactNode, variant?: 'default' | 'outline', className?: string }) {
-    return (
-        <span className={cn(
-            "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight",
-            variant === 'default' ? "bg-primary text-primary-foreground" : "border text-muted-foreground",
-            className
-        )}>
-            {children}
-        </span>
-    )
 }
