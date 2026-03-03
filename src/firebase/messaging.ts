@@ -1,9 +1,8 @@
 'use client';
 import { getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
 import { getApp } from 'firebase/app';
-import { getFirestore, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Trocado updateDoc por setDoc
 
-// Chave VAPID pública do seu projeto Firebase
 const VAPID_KEY = 'BIiPXefnrJB_RH2iDZNKlvJXUTUFaHNWPkgdqv4WRYSMB7OvzX_GPf0WylTwE23_uYwcDsRAFpijfDi0tE4gEhg';
 
 export const requestPermissionAndSaveToken = async (userId: string) => {
@@ -19,11 +18,9 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
     const firestore = getFirestore(app);
     const messaging = getMessaging(app);
 
-    // 1. Pede permissão ao usuário
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
-      // 2. Registra o Service Worker essencial para o token ser gerado
       const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
         scope: '/',
         updateViaCache: 'none'
@@ -31,27 +28,26 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
       
       await navigator.serviceWorker.ready;
 
-      // 3. Gera o token único do aparelho
       const currentToken = await getToken(messaging, {
         serviceWorkerRegistration: registration,
         vapidKey: VAPID_KEY
       });
       
       if (currentToken) {
-        // 4. SALVA NO FIRESTORE (Campo fcmToken)
-        // Usamos updateDoc para APENAS ADICIONAR o token, sem apagar o resto (role, address, etc)
+        // CORREÇÃO CRÍTICA: setDoc + merge permite criar o Admin se ele não existir
         const userDocRef = doc(firestore, 'users', userId);
         
-        await updateDoc(userDocRef, { 
+        await setDoc(userDocRef, { 
           fcmToken: currentToken,
-          lastTokenUpdate: serverTimestamp()
-        });
+          lastTokenUpdate: serverTimestamp(),
+          // Se for o Admin e o documento for novo, ele entra como admin
+          // Se já existir, o merge não deixará apagar os dados antigos
+          status: 'online'
+        }, { merge: true });
         
-        console.log('FCM: fcmToken salvo com sucesso para:', userId);
+        console.log('FCM: fcmToken salvo/atualizado com sucesso para:', userId);
 
-        // Listener para quando o usuário está com o site aberto
         onMessage(messaging, (payload) => {
-          console.log('FCM: Foreground message:', payload);
           if (Notification.permission === 'granted') {
             new Notification(payload.notification?.title || 'Lucas-Expresso', {
               body: payload.notification?.body,
@@ -59,7 +55,6 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
             });
           }
         });
-
       }
     }
   } catch (err) {

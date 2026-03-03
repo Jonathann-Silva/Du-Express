@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -144,7 +143,7 @@ export default function AdminChatListPage() {
                           "text-sm truncate",
                           unreadCount > 0 ? "text-foreground font-bold" : "text-muted-foreground font-medium"
                       )}>
-                          {room?.lastMessage || (user.role === 'client' ? 'Loja cadastrada' : 'Entregador cadastrado')}
+                          {room?.lastMessage || (user.role === 'client' ? 'Loja' : 'Entregador')}
                       </p>
                       {unreadCount > 0 && (
                         <div className="min-w-2 h-2 bg-primary rounded-full animate-pulse shrink-0" />
