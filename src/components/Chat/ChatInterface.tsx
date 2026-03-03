@@ -28,10 +28,9 @@ interface ChatInterfaceProps {
   chatId: string;
   recipientId: string;
   recipientProfile?: UserProfile | null;
-  onClose?: () => void;
 }
 
-export function ChatInterface({ chatId, recipientId, recipientProfile, onClose }: ChatInterfaceProps) {
+export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInterfaceProps) {
   const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const [message, setMessage] = useState('');
@@ -116,7 +115,7 @@ export function ChatInterface({ chatId, recipientId, recipientProfile, onClose }
         createdAt: serverTimestamp(),
         read: false,
         icon: 'message',
-        link: userProfile.role === 'admin' ? (recipientProfile?.role === 'client' ? '/client/chat' : '/courier/chat') : `/admin/chats?id=${chatId}`
+        link: userProfile.role === 'admin' ? (recipientProfile?.role === 'client' ? '/client/chat' : '/courier/chat') : `/admin/chats`
       });
 
     } catch (error) {
@@ -126,30 +125,8 @@ export function ChatInterface({ chatId, recipientId, recipientProfile, onClose }
     }
   };
 
-  const RecipientIcon = recipientProfile?.role === 'client' ? Building : Bike;
-
   return (
-    <div className="flex flex-col h-full bg-background border rounded-2xl overflow-hidden shadow-xl">
-      <header className="p-4 border-b bg-muted/30 flex items-center gap-3">
-        <Avatar className="size-10 border-2 border-primary/20">
-          <AvatarImage src={recipientProfile?.photoURL || ''} />
-          <AvatarFallback className="bg-primary/10 text-primary">
-            {recipientProfile?.displayName?.charAt(0) || <RecipientIcon size={18} />}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-sm leading-tight truncate">{recipientProfile?.displayName || 'Carregando...'}</h3>
-          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">
-            {recipientProfile?.role === 'admin' ? 'Central de Suporte' : (recipientProfile?.userType || 'Usuário')}
-          </p>
-        </div>
-        {onClose && (
-          <Button variant="ghost" size="icon" className="rounded-full shrink-0" onClick={onClose}>
-            <X size={20} />
-          </Button>
-        )}
-      </header>
-
+    <div className="flex flex-col h-full bg-background overflow-hidden">
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-4">
           {loading && <div className="flex justify-center p-4"><Loader2 className="animate-spin text-muted-foreground" /></div>}

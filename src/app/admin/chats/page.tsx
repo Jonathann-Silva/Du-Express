@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogHeader } from '@/components/ui/dialog';
 import type { ChatRoom, UserProfile } from '@/lib/types';
 
 export default function AdminChatListPage() {
@@ -175,18 +175,32 @@ export default function AdminChatListPage() {
         open={!!selectedChatId} 
         onOpenChange={(open) => !open && setSelectedChatId(null)}
       >
-        <DialogContent className="max-w-2xl h-[85vh] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
-          <DialogTitle className="sr-only">Conversa com {selectedRecipient?.displayName}</DialogTitle>
-          {selectedChatId && selectedRecipient && (
-            <div className="flex flex-col h-full w-full relative">
+        <DialogContent className="max-w-2xl h-[85vh] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl flex flex-col">
+          <DialogHeader className="p-6 border-b bg-muted/30 shrink-0">
+            <DialogTitle className="flex items-center gap-3">
+              <Avatar className="size-10 border-2 border-primary/20">
+                <AvatarImage src={selectedRecipient?.photoURL || ''} />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {selectedRecipient?.displayName?.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col items-start">
+                <span className="text-base font-bold leading-none">{selectedRecipient?.displayName}</span>
+                <span className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter mt-1">
+                  {selectedRecipient?.role === 'client' ? 'Loja' : 'Entregador'}
+                </span>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden relative">
+            {selectedChatId && selectedRecipient && (
               <ChatInterface 
                 chatId={selectedChatId} 
                 recipientId={selectedRecipient.uid}
                 recipientProfile={selectedRecipient}
-                onClose={() => setSelectedChatId(null)}
               />
-            </div>
-          )}
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
