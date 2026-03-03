@@ -165,6 +165,7 @@ export default function AdminChatListPage() {
                 chatId={selectedChatId} 
                 recipientId={selectedRecipient.uid}
                 recipientProfile={selectedRecipient}
+                onClose={() => setSelectedChatId(null)}
               />
             </div>
           )}

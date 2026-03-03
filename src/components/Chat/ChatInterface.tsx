@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Send, Loader2, User, Building, Bike } from 'lucide-react';
+import { Send, Loader2, User, Building, Bike, X } from 'lucide-react';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { 
   collection, 
@@ -28,9 +28,10 @@ interface ChatInterfaceProps {
   chatId: string;
   recipientId: string;
   recipientProfile?: UserProfile | null;
+  onClose?: () => void;
 }
 
-export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInterfaceProps) {
+export function ChatInterface({ chatId, recipientId, recipientProfile, onClose }: ChatInterfaceProps) {
   const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const [message, setMessage] = useState('');
@@ -133,12 +134,17 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
             {recipientProfile?.displayName?.charAt(0) || <RecipientIcon size={18} />}
           </AvatarFallback>
         </Avatar>
-        <div>
-          <h3 className="font-bold text-sm leading-tight">{recipientProfile?.displayName || 'Carregando...'}</h3>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-bold text-sm leading-tight truncate">{recipientProfile?.displayName || 'Carregando...'}</h3>
           <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">
             {recipientProfile?.role === 'admin' ? 'Central de Suporte' : (recipientProfile?.userType || 'Usuário')}
           </p>
         </div>
+        {onClose && (
+          <Button variant="ghost" size="icon" className="rounded-full shrink-0" onClick={onClose}>
+            <X size={20} />
+          </Button>
+        )}
       </header>
 
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
