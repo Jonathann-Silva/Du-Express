@@ -399,7 +399,7 @@ export default function ClientSettingsPage() {
                         <Button 
                             type="submit" 
                             disabled={isSaving} 
-                            className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-primary/20 active:scale-95 transition-all"
+                            className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-primary/20 transition-all active:scale-95"
                         >
                             {isSaving ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2 size-5" />}
                             SALVAR ALTERAÇÕES
@@ -491,7 +491,7 @@ export default function ClientSettingsPage() {
                 </section>
 
                 <p className="text-center text-[10px] text-muted-foreground/40 font-bold uppercase tracking-widest pb-10">
-                    Lucas Expresso v1.0.0 • Parceiro Comercial
+                    Lucas Expresso v0.0.9 • Parceiro Comercial
                 </p>
             </main>
         </div>

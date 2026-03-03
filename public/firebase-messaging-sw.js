@@ -1,8 +1,8 @@
-// Scripts necessários para o Firebase Worker
+// scripts necessários para o Firebase Worker
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-// Configuração do Firebase (deve ser idêntica à do src/firebase/config.ts)
+// Configuração idêntica à do seu projeto
 firebase.initializeApp({
   apiKey: "AIzaSyBviQrq6B1yVM3SrEyrAnvpbcqyOwEj5KM",
   authDomain: "studio-7544233787-fa02d.firebaseapp.com",
@@ -14,17 +14,32 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Lógica para lidar com mensagens recebidas em segundo plano (background)
+// Lógica para lidar com mensagens recebidas com APP MINIMIZADO OU FECHADO
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Mensagem recebida em background: ', payload);
   
-  const notificationTitle = payload.notification.title || 'Lucas-Expresso';
+  const title = payload.notification?.title || payload.data?.title || 'Lucas-Expresso';
+  const body = payload.notification?.body || payload.data?.body || 'Novo pedido recebido!';
+  
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/favicon.ico', // Ou URL de ícone estável
+    body: body,
+    icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
     badge: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
-    data: payload.data
+    tag: 'lucas-expresso-notificacao',
+    renotify: true,
+    data: {
+      url: payload.data?.link || '/'
+    }
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  // O 'return' é OBRIGATÓRIO para o iOS não ignorar a notificação
+  return self.registration.showNotification(title, notificationOptions);
+});
+
+// Listener para abrir o app ao clicar na notificação
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.openWindow(event.notification.data.url)
+  );
 });
