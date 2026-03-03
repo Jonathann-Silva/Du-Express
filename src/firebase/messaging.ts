@@ -50,7 +50,7 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
         // Handler para mensagens enquanto o app está aberto (foreground)
         onMessage(messaging, (payload) => {
           console.log('FCM: Mensagem recebida em primeiro plano:', payload);
-          // Opcional: mostrar um alerta customizado aqui ou usar a notificação nativa
+          // Notificação nativa em primeiro plano
           new Notification(payload.notification?.title || 'Lucas-Expresso', {
             body: payload.notification?.body,
             icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s'
