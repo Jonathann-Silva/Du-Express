@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -21,6 +20,7 @@ import { CourierInfo } from '@/components/info/CourierInfo';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { AssignCourierDialog } from '@/components/AssignCourierDialog';
 import { AdminCreateDeliveryDialog } from '@/components/AdminCreateDeliveryDialog';
+import { DeliverySummaryDialog } from '@/components/DeliverySummaryDialog';
 
 type FilterStatus = AdminDeliveryStatus | 'all';
 
@@ -35,6 +35,7 @@ const statusMap: Record<AdminDeliveryStatus, { label: string; color: string; bgC
 export default function AdminDeliveriesPage() {
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  const [summaryDelivery, setSummaryDelivery] = useState<Delivery | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const { user, userProfile, loading: userLoading } = useUser();
   const firestore = useFirestore();
@@ -141,7 +142,12 @@ export default function AdminDeliveriesPage() {
                 <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-1 mb-4">{title}</h2>
                 <div className="space-y-4">
                   {groupDeliveries.map(delivery => (
-                      <DeliveryCard key={delivery.id} delivery={delivery} onAssignClick={() => setSelectedDelivery(delivery)} />
+                      <DeliveryCard 
+                        key={delivery.id} 
+                        delivery={delivery} 
+                        onAssignClick={() => setSelectedDelivery(delivery)} 
+                        onSummaryClick={() => setSummaryDelivery(delivery)}
+                      />
                   ))}
                 </div>
               </section>
@@ -174,11 +180,20 @@ export default function AdminDeliveriesPage() {
             <AdminCreateDeliveryDialog onClose={() => setIsCreateModalOpen(false)} />
         </DialogContent>
       </Dialog>
+
+      {/* Dialog para Ver Resumo da Entrega */}
+      <Dialog open={!!summaryDelivery} onOpenChange={(isOpen) => !isOpen && setSummaryDelivery(null)}>
+        {summaryDelivery && (
+          <DialogContent className="max-w-md p-6 overflow-hidden rounded-[2rem]">
+              <DeliverySummaryDialog delivery={summaryDelivery} />
+          </DialogContent>
+        )}
+      </Dialog>
     </>
   );
 }
 
-function DeliveryCard({ delivery, onAssignClick }: { delivery: Delivery, onAssignClick: () => void }) {
+function DeliveryCard({ delivery, onAssignClick, onSummaryClick }: { delivery: Delivery, onAssignClick: () => void, onSummaryClick: () => void }) {
   const statusInfo = statusMap[delivery.status as AdminDeliveryStatus];
   
   if (!statusInfo) return null;
@@ -239,11 +254,11 @@ function DeliveryCard({ delivery, onAssignClick }: { delivery: Delivery, onAssig
             </>
         )}
         {delivery.status === 'finished' && (
-            <Button variant="outline" className="flex-1 font-bold text-sm">Ver Resumo</Button>
+            <Button variant="outline" className="flex-1 font-bold text-sm" onClick={onSummaryClick}>Ver Resumo</Button>
         )}
         {delivery.status === 'refused' && (
-            <div className='flex items-center gap-2 text-destructive font-semibold text-sm w-full justify-center bg-destructive/10 py-2 rounded-lg'>
-              <XCircle className="size-5" /> Recusado
+            <div className='flex items-center gap-2 text-destructive font-semibold text-sm w-full justify-center bg-destructive/10 py-2 rounded-lg cursor-pointer' onClick={onSummaryClick}>
+              <XCircle className="size-5" /> Ver Motivo
             </div>
         )}
       </div>
