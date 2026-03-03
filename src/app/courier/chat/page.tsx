@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ArrowLeft, ShieldCheck, MessageSquare } from 'lucide-react';
@@ -38,7 +37,7 @@ export default function CourierChatPage() {
             <ShieldCheck className="text-emerald-600 size-6" />
           </div>
           <div>
-            <p className="text-sm font-bold leading-tight">Suporte ao Entregador</p>
+            <p className="text-sm font-bold leading-tight">Suporte</p>
             <p className="text-xs text-muted-foreground mt-0.5">Comunique problemas em rota, endereços errados ou falhas no app.</p>
           </div>
         </div>
