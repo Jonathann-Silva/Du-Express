@@ -98,23 +98,43 @@ export default function AdminChatListPage() {
             </div>
           ) : filteredContacts.length > 0 ? (
             filteredContacts.map(({ user, room }) => {
+              const unreadCount = room?.unreadCountAdmin ?? 0;
               return (
                 <button
                   key={user.uid}
                   onClick={() => handleSelectUser(user)}
-                  className="w-full p-4 flex items-center gap-4 transition-all bg-card border rounded-2xl hover:bg-muted/30 text-left relative shadow-sm active:scale-[0.98]"
+                  className={cn(
+                    "w-full p-4 flex items-center gap-4 transition-all border rounded-2xl text-left relative shadow-sm active:scale-[0.98]",
+                    unreadCount > 0 ? "bg-primary/5 border-primary/20 shadow-md ring-1 ring-primary/10" : "bg-card hover:bg-muted/30"
+                  )}
                 >
-                  <Avatar className="size-14 rounded-2xl border border-muted/50 shrink-0 shadow-sm">
-                    <AvatarImage src={user.photoURL || ''} />
-                    <AvatarFallback className="bg-primary/5 text-primary">
-                      {user.role === 'client' ? <Building size={24} /> : <Bike size={24} />}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative shrink-0">
+                    <Avatar className="size-14 rounded-2xl border border-muted/50 shadow-sm">
+                      <AvatarImage src={user.photoURL || ''} />
+                      <AvatarFallback className="bg-primary/5 text-primary">
+                        {user.role === 'client' ? <Building size={24} /> : <Bike size={24} />}
+                      </AvatarFallback>
+                    </Avatar>
+                    {unreadCount > 0 && (
+                      <div className="absolute -top-1.5 -right-1.5 size-6 bg-red-500 text-[10px] font-black text-white rounded-full flex items-center justify-center border-2 border-background shadow-lg animate-bounce">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </div>
+                    )}
+                  </div>
+                  
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-1">
-                      <h4 className="font-bold text-base truncate pr-2">{user.displayName || 'Usuário'}</h4>
+                      <h4 className={cn(
+                        "font-bold text-base truncate pr-2",
+                        unreadCount > 0 ? "text-primary" : "text-foreground"
+                      )}>
+                        {user.displayName || 'Usuário'}
+                      </h4>
                       {room?.lastMessageAt && (
-                        <span className="text-[10px] text-muted-foreground font-bold uppercase whitespace-nowrap pt-1">
+                        <span className={cn(
+                          "text-[10px] font-bold uppercase whitespace-nowrap pt-1",
+                          unreadCount > 0 ? "text-primary" : "text-muted-foreground"
+                        )}>
                           {formatDistanceToNow(room.lastMessageAt.toDate(), { locale: ptBR })}
                         </span>
                       )}
@@ -122,14 +142,12 @@ export default function AdminChatListPage() {
                     <div className="flex justify-between items-center gap-2">
                       <p className={cn(
                           "text-sm truncate",
-                          (room?.unreadCountAdmin ?? 0) > 0 ? "text-primary font-bold" : "text-muted-foreground"
+                          unreadCount > 0 ? "text-foreground font-bold" : "text-muted-foreground font-medium"
                       )}>
                           {room?.lastMessage || (user.role === 'client' ? 'Loja cadastrada' : 'Entregador cadastrado')}
                       </p>
-                      {(room?.unreadCountAdmin ?? 0) > 0 && (
-                        <div className="min-w-5 h-5 px-1.5 bg-primary text-[10px] font-black text-white rounded-full flex items-center justify-center animate-in zoom-in-50">
-                          {room.unreadCountAdmin}
-                        </div>
+                      {unreadCount > 0 && (
+                        <div className="min-w-2 h-2 bg-primary rounded-full animate-pulse shrink-0" />
                       )}
                     </div>
                   </div>
