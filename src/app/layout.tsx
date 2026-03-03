@@ -21,6 +21,10 @@ const APP_ICON_URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTta
 
 export const viewport: Viewport = {
   themeColor: '#13a4ec',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export const metadata: Metadata = {
@@ -30,6 +34,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'default',
     title: 'Lucas-Expresso',
+  },
+  formatDetection: {
+    telephone: false,
   },
   icons: {
     icon: APP_ICON_URL,
@@ -52,13 +59,15 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <link href='https://unpkg.com/maplibre-gl/dist/maplibre-gl.css' rel='stylesheet' />
         <link rel="apple-touch-icon" href={APP_ICON_URL} />
+        {/* Metatags específicas para iOS aparecer como App */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body className={cn(inter.variable, spaceGrotesk.variable, 'font-body antialiased')}>
         <FirebaseProvider>
           {children}
           <Toaster />
         </FirebaseProvider>
-        {/* SDK do Mercado Pago */}
         <Script src="https://sdk.mercadopago.com/js/v2" strategy="beforeInteractive" />
       </body>
     </html>
