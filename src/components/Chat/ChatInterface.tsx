@@ -83,11 +83,14 @@ export function ChatInterface({ chatId, recipientId, recipientProfile, onClose }
     const messagesRef = collection(firestore, 'chats', chatId, 'messages');
     const notifRef = collection(firestore, 'notifications');
 
+    // Fallback para evitar 'undefined' no título da notificação
+    const senderName = userProfile.displayName || (userProfile.role === 'admin' ? 'Admin' : 'Usuário');
+
     try {
       // 1. Add Message
       await addDoc(messagesRef, {
         senderId: user.uid,
-        senderName: userProfile.displayName || 'Usuário',
+        senderName: senderName,
         text,
         createdAt: serverTimestamp(),
         read: false
@@ -108,12 +111,12 @@ export function ChatInterface({ chatId, recipientId, recipientProfile, onClose }
       // 3. Create Notification for recipient
       await addDoc(notifRef, {
         userId: recipientId === 'admin' ? 'admin' : recipientId,
-        title: `Nova mensagem de ${userProfile.displayName}`,
+        title: `Nova mensagem de ${senderName}`,
         description: text.length > 50 ? text.substring(0, 47) + '...' : text,
         createdAt: serverTimestamp(),
         read: false,
         icon: 'message',
-        link: userProfile.role === 'admin' ? (userProfile.role === 'client' ? '/client/chat' : '/courier/chat') : `/admin/chats?id=${chatId}`
+        link: userProfile.role === 'admin' ? (recipientProfile?.role === 'client' ? '/client/chat' : '/courier/chat') : `/admin/chats?id=${chatId}`
       });
 
     } catch (error) {

@@ -1,9 +1,6 @@
-
-// Scripts necessários do Firebase
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-// Configuração idêntica ao seu arquivo src/firebase/config.ts
 firebase.initializeApp({
   apiKey: "AIzaSyBviQrq6B1yVM3SrEyrAnvpbcqyOwEj5KM",
   authDomain: "studio-7544233787-fa02d.firebaseapp.com",
@@ -15,29 +12,47 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Listener para quando o app está em SEGUNDO PLANO
+// Este evento é o que garante que o navegador "acorde" para mostrar a notificação
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Recebeu mensagem em segundo plano:', payload);
+  console.log('[SW] Mensagem recebida em segundo plano:', payload);
 
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
+  // Se o payload vier vazio ou sem a parte de notification, a gente extrai do data
+  const title = payload.notification?.title || payload.data?.title || "Lucas-Expresso";
+  const options = {
+    body: payload.notification?.body || payload.data?.body || "Nova atualização disponível.",
     icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
     badge: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
     vibrate: [200, 100, 200],
     tag: 'lucas-expresso-notif',
+    renotify: true, // Faz o celular vibrar de novo se chegar outra
     data: {
       url: payload.data?.link || '/'
     }
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  // Linha vital: força a exibição no sistema operacional
+  return self.registration.showNotification(title, options);
 });
 
-// Listener para cliques na notificação
+// Listener para cliques: abre o app ou foca na aba já aberta
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  
+  const urlToOpen = event.notification.data.url;
+
   event.waitUntil(
-    clients.openWindow(event.notification.data.url)
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Se o app já estiver aberto, foca nele
+      for (let i = 0; i < windowClients.length; i++) {
+        let client = windowClients[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Se estiver fechado, abre uma nova janela/instância do PWA
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
   );
 });
