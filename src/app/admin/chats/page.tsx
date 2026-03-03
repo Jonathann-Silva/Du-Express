@@ -1,23 +1,15 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { MessageSquare, Search, Building, Bike, Loader2, ArrowLeft, UserPlus, MoreVertical, CheckCheck } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { MessageSquare, Search, Building, Bike, ArrowLeft } from 'lucide-react';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, limit, where, doc, getDoc } from 'firebase/firestore';
-import { Card } from '@/components/ui/card';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChatInterface } from '@/components/Chat/ChatInterface';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -28,20 +20,18 @@ export default function AdminChatListPage() {
   const { userProfile } = useUser();
   const firestore = useFirestore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [contactSearch, setContactSearch] = useState('');
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(null);
-  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
 
-  // Busca salas de chat existentes ordenadas pela última mensagem
+  // Busca salas de chat existentes para pegar metadados (última msg, unread)
   const chatsQuery = useMemo(() => {
     if (!firestore || userProfile?.role !== 'admin') return null;
-    return query(collection(firestore, 'chats'), orderBy('lastMessageAt', 'desc'), limit(50));
+    return query(collection(firestore, 'chats'), orderBy('lastMessageAt', 'desc'), limit(100));
   }, [firestore, userProfile]);
 
-  const { data: rooms, loading } = useCollection<ChatRoom>(chatsQuery);
+  const { data: rooms, loading: loadingRooms } = useCollection<ChatRoom>(chatsQuery);
 
-  // Busca todos os usuários para o "Novo Chat"
+  // Busca todos os usuários (Lojas e Motoboys) para listar no "WhatsApp"
   const usersQuery = useMemo(() => {
     if (!firestore || userProfile?.role !== 'admin') return null;
     return query(collection(firestore, 'users'), where('role', 'in', ['client', 'courier']));
@@ -49,123 +39,52 @@ export default function AdminChatListPage() {
 
   const { data: allUsers, loading: loadingUsers } = useCollection<UserProfile>(usersQuery);
 
-  const filteredRooms = useMemo(() => {
-    if (!rooms) return [];
-    return rooms.filter(r => 
-      !searchQuery || r.userName?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [rooms, searchQuery]);
+  // Unifica a lista: Todos os usuários, ordenados por quem tem mensagem mais recente
+  const contactList = useMemo(() => {
+    if (!allUsers) return [];
+    
+    return allUsers.map(user => {
+        const room = rooms?.find(r => r.id === `admin_${user.uid}`);
+        return {
+            user,
+            room,
+            lastMessageAt: room?.lastMessageAt?.toDate() || new Date(0)
+        };
+    }).sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime());
+  }, [allUsers, rooms]);
 
   const filteredContacts = useMemo(() => {
-    if (!allUsers) return [];
-    return allUsers.filter(u => 
-      !contactSearch || u.displayName?.toLowerCase().includes(contactSearch.toLowerCase())
+    return contactList.filter(item => 
+      !searchQuery || item.user.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [allUsers, contactSearch]);
+  }, [contactList, searchQuery]);
 
-  const handleSelectRoom = async (room: ChatRoom) => {
-    setSelectedChatId(room.id);
-    
-    // Tenta buscar o perfil completo do usuário para o cabeçalho do chat
-    const userId = room.id.replace('admin_', '');
-    if (firestore) {
-        const userRef = doc(firestore, 'users', userId);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-            setSelectedRecipient({ ...userSnap.data(), uid: userId } as UserProfile);
-        } else {
-            setSelectedRecipient({
-                uid: userId,
-                displayName: room.userName,
-                role: room.userRole as any,
-                photoURL: null,
-            } as UserProfile);
-        }
-    }
+  const handleSelectUser = (user: UserProfile) => {
+    setSelectedChatId(`admin_${user.uid}`);
+    setSelectedRecipient(user);
   };
 
-  const handleStartNewChat = (contact: UserProfile) => {
-    setSelectedChatId(`admin_${contact.uid}`);
-    setSelectedRecipient(contact);
-    setIsNewChatOpen(false);
-  };
+  const isLoading = loadingRooms || loadingUsers;
 
   return (
     <div className="flex h-full bg-background overflow-hidden outline-none">
-      {/* Sidebar de Histórico de Mensagens */}
+      {/* Sidebar Estilo WhatsApp */}
       <aside className={cn(
         "w-full md:w-96 border-r flex flex-col bg-card/50 transition-all",
         selectedChatId ? "hidden md:flex" : "flex"
       )}>
         <header className="p-4 space-y-4 shrink-0 bg-background/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold font-headline tracking-tight">Conversas</h1>
-            
-            <Dialog open={isNewChatOpen} onOpenChange={setIsNewChatOpen}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10 text-primary">
-                  <UserPlus size={22} />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="p-0 overflow-hidden max-w-sm rounded-[2rem] border-none shadow-2xl">
-                <DialogHeader className="p-6 bg-primary text-primary-foreground">
-                  <DialogTitle className="font-headline text-xl">Novo Atendimento</DialogTitle>
-                </DialogHeader>
-                <div className="p-4 border-b bg-muted/30">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-                    <Input 
-                      placeholder="Buscar por nome..." 
-                      className="pl-9 bg-background border-none h-11 rounded-xl shadow-sm"
-                      value={contactSearch}
-                      onChange={(e) => setContactSearch(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <ScrollArea className="h-96">
-                  <div className="p-2 space-y-1">
-                    {loadingUsers ? (
-                      <div className="p-4 space-y-4">
-                        <Skeleton className="h-14 w-full rounded-2xl" />
-                        <Skeleton className="h-14 w-full rounded-2xl" />
-                        <Skeleton className="h-14 w-full rounded-2xl" />
-                      </div>
-                    ) : filteredContacts.length > 0 ? (
-                      filteredContacts.map((contact) => (
-                        <button
-                          key={contact.uid}
-                          onClick={() => handleStartNewChat(contact)}
-                          className="w-full p-3 flex items-center gap-4 hover:bg-primary/5 rounded-2xl transition-all text-left group"
-                        >
-                          <Avatar className="size-12 rounded-2xl border-2 border-transparent group-hover:border-primary/20">
-                            <AvatarImage src={contact.photoURL || ''} />
-                            <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                              {contact.role === 'client' ? <Building size={20} /> : <Bike size={20} />}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-sm truncate">{contact.displayName}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-0.5">
-                              {contact.role === 'client' ? 'Loja' : 'Motoboy'} • {contact.userType}
-                            </p>
-                          </div>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="text-center py-12 text-muted-foreground">
-                        <p className="text-sm font-medium">Nenhum contato encontrado</p>
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
+            <h1 className="text-2xl font-bold font-headline tracking-tight">Atendimentos</h1>
+            <div className="size-10 flex items-center justify-center bg-primary/10 text-primary rounded-full">
+                <MessageSquare size={20} />
+            </div>
           </div>
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
             <Input 
-              placeholder="Pesquisar conversas..." 
+              placeholder="Buscar loja ou motoboy..." 
               className="pl-9 h-11 rounded-2xl bg-muted/50 border-none focus-visible:ring-primary/20"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -175,19 +94,19 @@ export default function AdminChatListPage() {
 
         <ScrollArea className="flex-1">
           <div className="flex flex-col gap-px">
-            {loading ? (
+            {isLoading ? (
               <div className="p-4 space-y-4">
                 <Skeleton className="h-20 w-full rounded-2xl" />
                 <Skeleton className="h-20 w-full rounded-2xl" />
                 <Skeleton className="h-20 w-full rounded-2xl" />
               </div>
-            ) : filteredRooms.length > 0 ? (
-              filteredRooms.map((room) => {
-                const isActive = selectedChatId === room.id;
+            ) : filteredContacts.length > 0 ? (
+              filteredContacts.map(({ user, room }) => {
+                const isActive = selectedChatId === `admin_${user.uid}`;
                 return (
                   <button
-                    key={room.id}
-                    onClick={() => handleSelectRoom(room)}
+                    key={user.uid}
+                    onClick={() => handleSelectUser(user)}
                     className={cn(
                       "w-full p-4 flex items-center gap-4 transition-all border-b border-muted/30 text-left relative",
                       isActive ? "bg-primary/5" : "hover:bg-muted/30"
@@ -195,25 +114,28 @@ export default function AdminChatListPage() {
                   >
                     {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full" />}
                     <Avatar className="size-14 rounded-2xl border border-muted/50 shrink-0">
+                      <AvatarImage src={user.photoURL || ''} />
                       <AvatarFallback className="bg-primary/5 text-primary">
-                        {room.userRole === 'client' ? <Building size={24} /> : <Bike size={24} />}
+                        {user.role === 'client' ? <Building size={24} /> : <Bike size={24} />}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start mb-1">
-                        <h4 className="font-bold text-base truncate pr-2">{room.userName || 'Usuário'}</h4>
-                        <span className="text-[10px] text-muted-foreground font-bold uppercase whitespace-nowrap pt-1">
-                          {room.lastMessageAt ? formatDistanceToNow(room.lastMessageAt.toDate(), { locale: ptBR }) : ''}
-                        </span>
+                        <h4 className="font-bold text-base truncate pr-2">{user.displayName || 'Usuário'}</h4>
+                        {room?.lastMessageAt && (
+                          <span className="text-[10px] text-muted-foreground font-bold uppercase whitespace-nowrap pt-1">
+                            {formatDistanceToNow(room.lastMessageAt.toDate(), { locale: ptBR })}
+                          </span>
+                        )}
                       </div>
                       <div className="flex justify-between items-center gap-2">
                         <p className={cn(
                             "text-sm truncate",
-                            room.unreadCountAdmin > 0 ? "text-foreground font-bold" : "text-muted-foreground"
+                            (room?.unreadCountAdmin ?? 0) > 0 ? "text-foreground font-bold" : "text-muted-foreground"
                         )}>
-                            {room.lastMessage}
+                            {room?.lastMessage || (user.role === 'client' ? 'Loja cadastrada' : 'Entregador cadastrado')}
                         </p>
-                        {room.unreadCountAdmin > 0 && (
+                        {(room?.unreadCountAdmin ?? 0) > 0 && (
                           <div className="min-w-5 h-5 px-1.5 bg-primary text-[10px] font-black text-white rounded-full flex items-center justify-center animate-in zoom-in-50">
                             {room.unreadCountAdmin}
                           </div>
@@ -226,12 +148,12 @@ export default function AdminChatListPage() {
             ) : (
               <div className="flex flex-col items-center justify-center py-32 px-10 text-center space-y-4">
                 <div className="size-20 rounded-[2rem] bg-muted/30 flex items-center justify-center">
-                    <MessageSquare className="size-10 text-muted-foreground/30" />
+                    <Search className="size-10 text-muted-foreground/30" />
                 </div>
                 <div>
-                    <p className="font-bold text-muted-foreground">Sem histórico de mensagens</p>
+                    <p className="font-bold text-muted-foreground">Nenhum contato encontrado</p>
                     <p className="text-xs text-muted-foreground/60 mt-1">
-                        Inicie um novo atendimento clicando no botão superior.
+                        Tente buscar por um nome diferente.
                     </p>
                 </div>
               </div>
