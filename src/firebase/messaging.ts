@@ -3,7 +3,7 @@
 import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getApp } from 'firebase/app';
 
-// Chave Pública VAPID (Padrão para identificar o servidor de envio)
+// Chave Pública VAPID (Deve ser a mesma do push-notification.ts)
 const VAPID_PUBLIC_KEY = 'BEl62fvEocDi_9guS2g6DBJXPJ6Ouu79No7Adn7SJreiaS-MBoYp97mST9rd5qcJubBen97Isrf8M2VAt9qh_As';
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -43,8 +43,7 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
         const firestore = getFirestore(getApp());
         const userDocRef = doc(firestore, 'users', userId);
         
-        // Salva a assinatura completa no Firestore como campo fcmToken (para retrocompatibilidade) ou pushSubscription
-        // Usamos pushSubscription para o Webpush nativo
+        // Salva a assinatura completa no Firestore
         await setDoc(userDocRef, { 
           pushSubscription: JSON.stringify(subscription),
           fcmToken: 'webpush_active', // Marcador para o sistema saber que este usuário aceitou push
