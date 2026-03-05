@@ -180,6 +180,7 @@ export default function AdminSettingsPage() {
 
         // Envia Push real se tiver assinatura
         if (userData.pushSubscription) {
+          // AQUI VOCÊ MUDA A MENSAGEM DE TRANSMISSÃO GERAL
           pushPromises.push(
             sendPushNotification(userData.pushSubscription, {
               title: '📣 Aviso da Central',

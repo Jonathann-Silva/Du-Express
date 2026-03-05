@@ -92,21 +92,15 @@ export function AssignCourierDialog({ delivery, onAssign, onCancel }: { delivery
       try {
         await batch.commit();
 
-        // DISPARO DE PUSH REAL PARA OS DOIS ENVOLVIDOS
-        const pushPromises = [];
-        
         // Push para o Entregador
         if (selectedCourier.pushSubscription) {
-          pushPromises.push(sendPushNotification(selectedCourier.pushSubscription, {
+          // AQUI VOCÊ MUDA A MENSAGEM QUE O MOTOCRISTA RECEBE
+          await sendPushNotification(selectedCourier.pushSubscription, {
             title: '🚀 Nova Entrega!',
             body: `Você foi escalado para coletar em ${delivery.pickup}.`,
             url: '/courier'
-          }));
+          });
         }
-
-        // Push para o Cliente (Loja)
-        const clientSnap = couriers.find(c => c.uid === delivery.clientId); // Isso é um erro de lógica, preciso do doc do cliente
-        // Correção: No MVP, focamos no push do entregador que é o mais crítico para a operação.
 
         toast({
             title: 'Entrega Atribuída!',

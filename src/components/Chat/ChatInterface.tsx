@@ -121,6 +121,7 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
       const sub = recipientDoc.data()?.pushSubscription;
       
       if (sub) {
+        // AQUI VOCÊ MUDA A MENSAGEM DE CHAT
         sendPushNotification(sub, {
           title: `💬 ${senderName}`,
           body: text,
