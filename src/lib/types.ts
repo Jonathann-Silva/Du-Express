@@ -51,7 +51,7 @@ export type UserProfile = {
   address?: string;
   userType?: string;
   cnpj?: string;
-  fcmToken?: string;
+  pushSubscription?: string; // JSON string of the WebPush subscription
   createdAt: Timestamp;
   deliveryRate?: number;
   condoRateGoldemItalian?: number;

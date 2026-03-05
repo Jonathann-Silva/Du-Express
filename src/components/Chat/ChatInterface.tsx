@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Send, Loader2, User, Building, Bike, X } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { 
   collection, 
@@ -13,16 +13,17 @@ import {
   doc, 
   setDoc, 
   increment,
-  updateDoc
+  updateDoc,
+  getDoc
 } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { ChatMessage, ChatRoom, UserProfile } from '@/lib/types';
+import type { ChatMessage, UserProfile } from '@/lib/types';
+import { sendPushNotification } from '@/services/push-notification';
 
 interface ChatInterfaceProps {
   chatId: string;
@@ -47,7 +48,6 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
 
   const { data: messages, loading } = useCollection<ChatMessage>(messagesQuery);
 
-  // Auto scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -57,7 +57,6 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
     }
   }, [messages]);
 
-  // Mark as read when messages load
   useEffect(() => {
     if (!firestore || !chatId || !userProfile) return;
     const roomRef = doc(firestore, 'chats', chatId);
@@ -82,7 +81,6 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
     const messagesRef = collection(firestore, 'chats', chatId, 'messages');
     const notifRef = collection(firestore, 'notifications');
 
-    // Fallback para evitar 'undefined' no título da notificação
     const senderName = userProfile.displayName || (userProfile.role === 'admin' ? 'Admin' : 'Usuário');
 
     try {
@@ -107,7 +105,7 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
         userRole: userProfile.role === 'admin' ? recipientProfile?.role : userProfile.role
       }, { merge: true });
 
-      // 3. Create Notification for recipient
+      // 3. Create In-App Notification
       await addDoc(notifRef, {
         userId: recipientId === 'admin' ? 'admin' : recipientId,
         title: `Nova mensagem de ${senderName}`,
@@ -117,6 +115,18 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
         icon: 'message',
         link: userProfile.role === 'admin' ? (recipientProfile?.role === 'client' ? '/client/chat' : '/courier/chat') : `/admin/chats`
       });
+
+      // 4. DISPARAR WEB PUSH (Notificação de Sistema)
+      const recipientDoc = await getDoc(doc(firestore, 'users', recipientId === 'admin' ? 'admin' : recipientId));
+      const sub = recipientDoc.data()?.pushSubscription;
+      
+      if (sub) {
+        sendPushNotification(sub, {
+          title: `💬 ${senderName}`,
+          body: text,
+          url: userProfile.role === 'admin' ? (recipientProfile?.role === 'client' ? '/client/chat' : '/courier/chat') : '/admin/chats'
+        });
+      }
 
     } catch (error) {
       console.error("Error sending message:", error);

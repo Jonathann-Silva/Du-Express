@@ -1,9 +1,22 @@
-'use client';
-import { getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
-import { getApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Trocado updateDoc por setDoc
 
-const VAPID_KEY = 'BIiPXefnrJB_RH2iDZNKlvJXUTUFaHNWPkgdqv4WRYSMB7OvzX_GPf0WylTwE23_uYwcDsRAFpijfDi0tE4gEhg';
+'use client';
+import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { getApp } from 'firebase/app';
+
+// Chave Pública VAPID (Deve ser gerada uma vez e mantida)
+// Você pode gerar novas usando: npx web-push generate-vapid-keys
+const VAPID_PUBLIC_KEY = 'BEl62fvEocDi_9guS2g6DBJXPJ6Ouu79No7Adn7SJreiaS-MBoYp97mST9rd5qcJubBen97Isrf8M2VAt9qh_As';
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 export const requestPermissionAndSaveToken = async (userId: string) => {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !userId) {
@@ -11,53 +24,36 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
   }
 
   try {
-    const supported = await isSupported();
-    if (!supported) return;
-    
-    const app = getApp();
-    const firestore = getFirestore(app);
-    const messaging = getMessaging(app);
-
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+      // Registra o Service Worker nativo (sem Firebase SDK)
+      const registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/',
-        updateViaCache: 'none'
       });
       
       await navigator.serviceWorker.ready;
 
-      const currentToken = await getToken(messaging, {
-        serviceWorkerRegistration: registration,
-        vapidKey: VAPID_KEY
+      // Subscreve ao serviço de push do navegador
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
       
-      if (currentToken) {
-        // CORREÇÃO CRÍTICA: setDoc + merge permite criar o Admin se ele não existir
+      if (subscription) {
+        const firestore = getFirestore(getApp());
         const userDocRef = doc(firestore, 'users', userId);
         
+        // Salva a assinatura completa (JSON) no Firestore
         await setDoc(userDocRef, { 
-          fcmToken: currentToken,
+          pushSubscription: JSON.stringify(subscription),
           lastTokenUpdate: serverTimestamp(),
-          // Se for o Admin e o documento for novo, ele entra como admin
-          // Se já existir, o merge não deixará apagar os dados antigos
-          status: 'online'
         }, { merge: true });
         
-        console.log('FCM: fcmToken salvo/atualizado com sucesso para:', userId);
-
-        onMessage(messaging, (payload) => {
-          if (Notification.permission === 'granted') {
-            new Notification(payload.notification?.title || 'Lucas-Expresso', {
-              body: payload.notification?.body,
-              icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s'
-            });
-          }
-        });
+        console.log('Webpush: Assinatura salva com sucesso para:', userId);
       }
     }
   } catch (err) {
-    console.error('FCM Error:', err);
+    console.error('Webpush Error:', err);
   }
 };
