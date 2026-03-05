@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -239,7 +240,7 @@ export default function CourierDashboard() {
               <div className="flex items-center gap-1.5 bg-background px-2.5 py-1 rounded-full border border-border shadow-sm">
                 <span className={cn("size-1.5 rounded-full", isAdminOnline ? "bg-green-500 animate-pulse" : "bg-slate-400")}></span>
                 <span className={cn("text-[10px] font-black uppercase tracking-tighter", isAdminOnline ? "text-green-600" : "text-slate-500")}>
-                  {statusLoading ? '...' : (isAdminOnline ? 'Online' : 'Offline')}
+                  {statusLoading ? '...' : (isAdminOnline ? 'Admin Online' : 'Admin Offline')}
                 </span>
               </div>
             </div>

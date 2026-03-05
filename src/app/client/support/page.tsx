@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -76,7 +77,7 @@ export default function SupportPage() {
                         <span className={cn("size-2 rounded-full", isAdminOnline ? "bg-green-500 animate-pulse" : "bg-red-500")}></span>
                     )}
                     <span className={cn("text-[10px] font-black uppercase tracking-tighter", isAdminOnline ? "text-green-600" : "text-slate-500")}>
-                        {statusLoading ? '...' : (isAdminOnline ? 'Online' : 'Offline')}
+                        {statusLoading ? '...' : (isAdminOnline ? 'Admin Online' : 'Admin Offline')}
                     </span>
                 </div>
             </div>
