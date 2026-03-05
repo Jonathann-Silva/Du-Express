@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, addDoc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, getDocs, query, where, limit, doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
@@ -20,6 +20,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn, checkClientBlockStatus } from "@/lib/utils";
 import type { Delivery, PaymentMethod } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { sendPushNotification } from "@/services/push-notification";
 
 
 export default function RequestDeliveryPage() {
@@ -34,7 +35,6 @@ export default function RequestDeliveryPage() {
   const [dropoffStreet, setDropoffStreet] = useState("");
   const [dropoffNumber, setDropoffNumber] = useState("");
 
-  // Busca faturas para verificar bloqueio
   const deliveriesQuery = useMemo(() => {
     if (!firestore || !user?.uid) return null;
     return query(
@@ -140,16 +140,29 @@ export default function RequestDeliveryPage() {
       paymentMethod: paymentMethod
     };
 
-    const deliveriesRef = collection(firestore, "deliveries");
-    addDoc(deliveriesRef, newDelivery)
-      .then(async () => {
-        toast({ title: "Pedido Enviado!" });
-        router.push("/client");
-      })
-      .catch(async (serverError) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'deliveries', operation: 'create', requestResourceData: newDelivery }));
-      })
-      .finally(() => setIsSubmitting(false));
+    try {
+      // 1. Salva o pedido no Firestore
+      const docRef = await addDoc(collection(firestore, "deliveries"), newDelivery);
+      
+      // 2. Busca o administrador para enviar o Push real
+      const adminSnap = await getDocs(query(collection(firestore, 'users'), where('role', '==', 'admin'), limit(1)));
+      const adminData = adminSnap.docs[0]?.data();
+      
+      if (adminData?.pushSubscription) {
+        await sendPushNotification(adminData.pushSubscription, {
+          title: '📦 Novo Pedido!',
+          body: `${userProfile.displayName} solicitou uma entrega para ${dropoff}.`,
+          url: '/admin'
+        });
+      }
+
+      toast({ title: "Pedido Enviado!" });
+      router.push("/client");
+    } catch (serverError: any) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'deliveries', operation: 'create', requestResourceData: newDelivery }));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (blockStatus.isBlocked) {

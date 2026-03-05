@@ -56,26 +56,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       if (!statusUpdateRef.current) {
         setAdminStatus(true);
         statusUpdateRef.current = true;
-        // REGISTRA O APARELHO DO ADMIN
+        // REGISTRA O APARELHO DO ADMIN PARA WEB PUSH
         requestPermissionAndSaveToken(user.uid);
       }
 
-      const q = query(collection(firestore, 'deliveries'), where('status', '==', 'pending'));
-      const unsubscribeDeliveries = onSnapshot(q, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added') {
-            if (Notification.permission === 'granted') {
-              new Notification('📦 Novo Pedido!', {
-                body: 'Uma nova solicitação de entrega chegou na central.',
-                icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
-                vibrate: [200, 100, 200]
-              });
-              const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
-              audio.play().catch(() => {});
-            }
-          }
-        });
-      });
+      // IMPORTANTE: Removemos o listener de 'pending' que disparava notificações de navegador
+      // porque agora usamos Webpush real (via sw.js) que funciona com o app fechado.
 
       const handleUnload = () => {
         setAdminStatus(false);
@@ -84,7 +70,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       return () => {
         window.removeEventListener('beforeunload', handleUnload);
-        unsubscribeDeliveries();
         timeoutRef.current = setTimeout(() => {
           setAdminStatus(false);
           statusUpdateRef.current = false;

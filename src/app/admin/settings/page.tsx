@@ -178,7 +178,7 @@ export default function AdminSettingsPage() {
           link: userData.role === 'client' ? '/client' : '/courier'
         });
 
-        // Envia Push se tiver assinatura
+        // Envia Push real se tiver assinatura
         if (userData.pushSubscription) {
           pushPromises.push(
             sendPushNotification(userData.pushSubscription, {
@@ -195,7 +195,7 @@ export default function AdminSettingsPage() {
       
       toast({
         title: "Aviso Enviado!",
-        description: `Mensagem enviada para ${usersSnap.size} usuários.`,
+        description: `Mensagem enviada para ${usersSnap.size} usuários registrados.`,
       });
       setBroadcastMessage('');
     } catch (error) {
@@ -266,6 +266,7 @@ export default function AdminSettingsPage() {
             </Card>
         </section>
 
+        {/* INDICADOR DE REGISTRO DO DISPOSITIVO */}
         <section>
           <div className="flex items-center gap-2 mb-4 px-1">
             <Smartphone className="text-primary size-5" />
@@ -288,7 +289,7 @@ export default function AdminSettingsPage() {
                 </p>
                 <p className="text-xs text-muted-foreground leading-tight mt-0.5">
                   {isDeviceRegistered 
-                    ? "Este aparelho está pronto para receber notificações push nativas."
+                    ? "Este aparelho está pronto para receber notificações push mesmo com a tela bloqueada."
                     : "Permita as notificações no seu navegador para receber alertas via Webpush."}
                 </p>
               </div>
@@ -350,6 +351,7 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
+        {/* FERRAMENTA DE TESTE DE PUSH */}
         <section>
           <div className="flex items-center gap-2 mb-4 px-1">
             <Megaphone className="text-primary size-5" />
@@ -358,7 +360,7 @@ export default function AdminSettingsPage() {
           <Card className="p-4 shadow-sm border border-primary/20 bg-primary/5">
             <div className="space-y-4">
               <Textarea 
-                placeholder="Digite o aviso aqui:" 
+                placeholder="Digite o aviso aqui (ex: 'Sistema em manutenção'):" 
                 className="bg-background border-primary/10 min-h-[100px]"
                 value={broadcastMessage}
                 onChange={(e) => setBroadcastMessage(e.target.value)}
