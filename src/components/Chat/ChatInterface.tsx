@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -84,7 +83,6 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
     const senderName = userProfile.displayName || (userProfile.role === 'admin' ? 'Admin' : 'Usuário');
 
     try {
-      // 1. Add Message
       await addDoc(messagesRef, {
         senderId: user.uid,
         senderName: senderName,
@@ -93,7 +91,6 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
         read: false
       });
 
-      // 2. Update Room Metadata
       await setDoc(roomRef, {
         id: chatId,
         participants: ['admin', recipientId],
@@ -105,7 +102,6 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
         userRole: userProfile.role === 'admin' ? recipientProfile?.role : userProfile.role
       }, { merge: true });
 
-      // 3. Create In-App Notification
       await addDoc(notifRef, {
         userId: recipientId === 'admin' ? 'admin' : recipientId,
         title: `Nova mensagem de ${senderName}`,
@@ -116,15 +112,13 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
         link: userProfile.role === 'admin' ? (recipientProfile?.role === 'client' ? '/client/chat' : '/courier/chat') : `/admin/chats`
       });
 
-      // 4. DISPARAR WEB PUSH (Notificação de Sistema)
       const recipientDoc = await getDoc(doc(firestore, 'users', recipientId === 'admin' ? 'admin' : recipientId));
       const sub = recipientDoc.data()?.pushSubscription;
       
       if (sub) {
-        // AQUI VOCÊ MUDA A MENSAGEM DE CHAT
-        sendPushNotification(sub, {
-          title: `💬 ${senderName}`,
-          body: text,
+        await sendPushNotification(sub, {
+          title: 'Lucas Expresso',
+          body: `💬 ${senderName}: ${text}`,
           url: userProfile.role === 'admin' ? (recipientProfile?.role === 'client' ? '/client/chat' : '/courier/chat') : '/admin/chats'
         });
       }

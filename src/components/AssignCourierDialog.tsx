@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -40,7 +39,6 @@ export function AssignCourierDialog({ delivery, onAssign, onCancel }: { delivery
   const sortedCouriers = useMemo(() => {
     if (!couriers) return [];
     return [...couriers].sort((a, b) => {
-        // Online first
         if (a.status === 'online' && b.status !== 'online') return -1;
         if (a.status !== 'online' && b.status === 'online') return 1;
         return (a.displayName || '').localeCompare(b.displayName || '');
@@ -58,14 +56,12 @@ export function AssignCourierDialog({ delivery, onAssign, onCancel }: { delivery
       const deliveryRef = doc(firestore, 'deliveries', delivery.id);
       const batch = writeBatch(firestore);
 
-      // Update delivery status
       batch.update(deliveryRef, {
           courierId: selectedCourierId,
           status: 'accepted',
           acceptedAt: serverTimestamp()
       });
       
-      // Create notification for the client
       const clientNotifRef = doc(collection(firestore, 'notifications'));
       batch.set(clientNotifRef, {
           userId: delivery.clientId,
@@ -77,7 +73,6 @@ export function AssignCourierDialog({ delivery, onAssign, onCancel }: { delivery
           link: '/client'
       });
       
-      // Create notification for the courier
       const courierNotifRef = doc(collection(firestore, 'notifications'));
       batch.set(courierNotifRef, {
           userId: selectedCourierId,
@@ -92,12 +87,10 @@ export function AssignCourierDialog({ delivery, onAssign, onCancel }: { delivery
       try {
         await batch.commit();
 
-        // Push para o Entregador
         if (selectedCourier.pushSubscription) {
-          // AQUI VOCÊ MUDA A MENSAGEM QUE O MOTOCRISTA RECEBE
           await sendPushNotification(selectedCourier.pushSubscription, {
-            title: '🚀 Nova Entrega!',
-            body: `Você foi escalado para coletar em ${delivery.pickup}.`,
+            title: 'Lucas Expresso',
+            body: `🚀 Nova Entrega: Você foi escalado para coletar em ${delivery.pickup}.`,
             url: '/courier'
           });
         }

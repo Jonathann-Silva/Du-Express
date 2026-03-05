@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -62,17 +61,14 @@ export default function AdminSettingsPage() {
   const [newFinancePassword, setNewFinancePassword] = useState('');
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
-  // Security Verification
   const [isSecurityVerified, setIsSecurityVerified] = useState(false);
   const [verifyPasswordInput, setVerifyPasswordInput] = useState('');
   const [verifyError, setVerifyError] = useState(false);
 
-  // System Rules state
   const [isTimeLimitModalOpen, setIsTimeLimitModalOpen] = useState(false);
   const [newTimeLimit, setNewTimeLimit] = useState(45);
   const [isUpdatingRules, setIsUpdatingRules] = useState(false);
 
-  // Broadcast state
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
 
@@ -178,13 +174,11 @@ export default function AdminSettingsPage() {
           link: userData.role === 'client' ? '/client' : '/courier'
         });
 
-        // Envia Push real se tiver assinatura
         if (userData.pushSubscription) {
-          // AQUI VOCÊ MUDA A MENSAGEM DE TRANSMISSÃO GERAL
           pushPromises.push(
             sendPushNotification(userData.pushSubscription, {
-              title: '📣 Aviso da Central',
-              body: broadcastMessage,
+              title: 'Lucas Expresso',
+              body: `📣 Aviso da Central: ${broadcastMessage}`,
               url: userData.role === 'client' ? '/client' : '/courier'
             })
           );
@@ -267,7 +261,6 @@ export default function AdminSettingsPage() {
             </Card>
         </section>
 
-        {/* INDICADOR DE REGISTRO DO DISPOSITIVO */}
         <section>
           <div className="flex items-center gap-2 mb-4 px-1">
             <Smartphone className="text-primary size-5" />
@@ -352,7 +345,6 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* FERRAMENTA DE TESTE DE PUSH */}
         <section>
           <div className="flex items-center gap-2 mb-4 px-1">
             <Megaphone className="text-primary size-5" />

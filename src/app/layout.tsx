@@ -27,12 +27,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Lucas-Expresso',
+  title: 'Lucas Expresso',
   description: 'Seu app de gerenciamento de entregas.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Lucas-Expresso',
+    title: 'Lucas Expresso',
   },
   formatDetection: {
     telephone: false,
@@ -52,7 +52,6 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        {/* LINK PARA O MANIFESTO - Ajustado com crossOrigin para evitar erro de CORS em workstation */}
         <link rel="manifest" href="/manifest.json" crossOrigin="use-credentials" />
         
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -62,7 +61,6 @@ export default function RootLayout({
         <link href='https://unpkg.com/maplibre-gl/dist/maplibre-gl.css' rel='stylesheet' />
         <link rel="apple-touch-icon" href={APP_ICON_URL} />
         
-        {/* Metatags específicas para iOS aparecer como App e receber push */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ArrowLeft, Wallet, Map, ArrowRight, Loader2, CircleDot, MapPin, AlertCircle, CreditCard, Banknote, CheckCircle2, ShieldAlert, Smartphone } from "lucide-react";
@@ -141,18 +140,15 @@ export default function RequestDeliveryPage() {
     };
 
     try {
-      // 1. Salva o pedido no Firestore
       const docRef = await addDoc(collection(firestore, "deliveries"), newDelivery);
       
-      // 2. Busca o administrador para enviar o Push real
       const adminSnap = await getDocs(query(collection(firestore, 'users'), where('role', '==', 'admin'), limit(1)));
       const adminData = adminSnap.docs[0]?.data();
       
       if (adminData?.pushSubscription) {
-        // AQUI VOCÊ MUDA A MENSAGEM DO PEDIDO PARA O ADMIN
         await sendPushNotification(adminData.pushSubscription, {
-          title: '📦 Novo Pedido!',
-          body: `${userProfile.displayName} solicitou uma entrega para ${dropoff}.`,
+          title: 'Lucas Expresso',
+          body: `📦 Novo Pedido: ${userProfile.displayName} solicitou entrega para ${dropoff}.`,
           url: '/admin'
         });
       }

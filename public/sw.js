@@ -1,59 +1,60 @@
-
-// Service Worker Nativo para Webpush (Lucas-Expresso)
-// Este arquivo roda em segundo plano, mesmo com o app fechado.
-
+// Service Worker para Webpush nativo - Lucas Expresso
 self.addEventListener('push', (event) => {
-  let data = { 
-    title: 'Lucas Expresso', 
-    body: 'Você tem uma nova atualização.',
-    url: '/'
-  };
-
   if (event.data) {
     try {
-      data = event.data.json();
+      const data = event.data.json();
+      
+      const options = {
+        body: data.body || 'Nova atualização do sistema',
+        icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
+        badge: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
+        vibrate: [200, 100, 200],
+        tag: 'lucas-expresso-notif',
+        renotify: true,
+        data: {
+          url: data.url || '/'
+        },
+        actions: [
+          { action: 'open', title: 'Abrir Aplicativo' }
+        ]
+      };
+
+      // O título da notificação será priorizado como o enviado pelo servidor,
+      // ou o nome da marca 'Lucas Expresso' como fallback.
+      event.waitUntil(
+        self.registration.showNotification(data.title || 'Lucas Expresso', options)
+      );
     } catch (e) {
-      data.body = event.data.text();
+      console.error('Erro ao processar dados do Push:', e);
     }
   }
-
-  const options = {
-    body: data.body,
-    icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
-    badge: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
-    vibrate: [200, 100, 200, 100, 200],
-    tag: 'lucas-expresso-notif', // Evita empilhamento excessivo
-    renotify: true,
-    data: {
-      url: data.url || '/'
-    },
-    actions: [
-      { action: 'open', title: 'Abrir App' }
-    ]
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
-  const targetUrl = event.notification.data.url;
+  const urlToOpen = event.notification.data?.url || '/';
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Se já houver uma aba aberta, foca nela
-      for (const client of clientList) {
-        if (client.url === targetUrl && 'focus' in client) {
-          return client.focus();
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Se já houver uma janela aberta, foca nela e navega
+      for (let client of windowClients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus().then(() => client.navigate(urlToOpen));
         }
       }
       // Se não, abre uma nova
       if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
+        return clients.openWindow(urlToOpen);
       }
     })
   );
+});
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
 });
