@@ -1,11 +1,10 @@
-
 'use server';
 
 import webpush from 'web-push';
 
 /**
  * Envia uma notificação push real para um dispositivo assinado.
- * As chaves VAPID são lidas do arquivo .env
+ * As chaves VAPID são lidas das variáveis de ambiente (Vercel ou .env).
  */
 export async function sendPushNotification(subscriptionJson: string, payload: { title: string; body: string; url?: string }) {
   if (!subscriptionJson) return { success: false, error: 'No subscription provided' };
@@ -13,14 +12,15 @@ export async function sendPushNotification(subscriptionJson: string, payload: { 
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
 
-  // Verifica se as chaves estão configuradas para evitar erros de 32 bytes ou chaves ausentes
-  if (!publicKey || !privateKey || privateKey.length < 20) {
-    console.warn('VAPID_PRIVATE_KEY ou PUBLIC_KEY não configuradas corretamente no .env. Notificação ignorada.');
+  // Verifica se as chaves estão configuradas corretamente
+  // A chave privada deve ter cerca de 43 caracteres em base64 para resultar em 32 bytes decodificados
+  if (!publicKey || !privateKey || privateKey.length < 30) {
+    console.warn('VAPID keys não configuradas corretamente na Vercel ou .env. Notificação ignorada.');
     return { success: false, error: 'VAPID keys not configured' };
   }
 
   try {
-    // Configura os detalhes VAPID apenas no momento do envio
+    // Configura os detalhes VAPID apenas no momento do envio para evitar crash no boot
     webpush.setVapidDetails(
       'mailto:suporte@lucasexpresso.com.br',
       publicKey,

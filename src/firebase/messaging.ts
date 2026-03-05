@@ -1,9 +1,8 @@
-
 'use client';
 import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getApp } from 'firebase/app';
 
-// Chave Pública VAPID vinda do ambiente (.env)
+// Chave Pública VAPID vinda do ambiente (.env ou Vercel)
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -18,8 +17,12 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export const requestPermissionAndSaveToken = async (userId: string) => {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !userId || !VAPID_PUBLIC_KEY) {
-    if (!VAPID_PUBLIC_KEY) console.warn('Webpush: NEXT_PUBLIC_VAPID_PUBLIC_KEY não configurada no .env');
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !userId) {
+    return;
+  }
+
+  if (!VAPID_PUBLIC_KEY) {
+    console.warn('Webpush: NEXT_PUBLIC_VAPID_PUBLIC_KEY não configurada no ambiente.');
     return;
   }
 
@@ -34,7 +37,7 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
       
       await navigator.serviceWorker.ready;
 
-      // Subscreve o usuário para receber notificações push nativas do navegador
+      // Subscreve o usuário para receber notificações push nativas
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
@@ -47,7 +50,7 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
         // Salva a assinatura completa no Firestore
         await setDoc(userDocRef, { 
           pushSubscription: JSON.stringify(subscription),
-          fcmToken: 'webpush_active', // Marcador para o sistema saber que este usuário aceitou push
+          fcmToken: 'webpush_active', // Marcador legado para compatibilidade
           lastTokenUpdate: serverTimestamp(),
         }, { merge: true });
         
