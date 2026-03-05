@@ -3,29 +3,28 @@
 
 import webpush from 'web-push';
 
-// Chave Pública VAPID (Deve ser a mesma do messaging.ts)
-const VAPID_PUBLIC_KEY = 'BEl62fvEocDi_9guS2g6DBJXPJ6Ouu79No7Adn7SJreiaS-MBoYp97mST9rd5qcJubBen97Isrf8M2VAt9qh_As';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-
 /**
  * Envia uma notificação push real para um dispositivo assinado.
- * As chaves VAPID devem ser configuradas no servidor.
+ * As chaves VAPID são lidas do arquivo .env
  */
 export async function sendPushNotification(subscriptionJson: string, payload: { title: string; body: string; url?: string }) {
   if (!subscriptionJson) return { success: false, error: 'No subscription provided' };
 
-  // Verifica se as chaves estão configuradas para evitar erro 500 no NextJS
-  if (!VAPID_PRIVATE_KEY || VAPID_PRIVATE_KEY.length < 20) {
-    console.warn('VAPID_PRIVATE_KEY não configurada. Notificação Push ignorada.');
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+
+  // Verifica se as chaves estão configuradas para evitar erros de 32 bytes ou chaves ausentes
+  if (!publicKey || !privateKey || privateKey.length < 20) {
+    console.warn('VAPID_PRIVATE_KEY ou PUBLIC_KEY não configuradas corretamente no .env. Notificação ignorada.');
     return { success: false, error: 'VAPID keys not configured' };
   }
 
   try {
-    // Inicializa o web-push dentro da função para evitar crash no boot do app
+    // Configura os detalhes VAPID apenas no momento do envio
     webpush.setVapidDetails(
       'mailto:suporte@lucasexpresso.com.br',
-      VAPID_PUBLIC_KEY,
-      VAPID_PRIVATE_KEY
+      publicKey,
+      privateKey
     );
 
     const subscription = JSON.parse(subscriptionJson);

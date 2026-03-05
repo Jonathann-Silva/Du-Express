@@ -3,8 +3,8 @@
 import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getApp } from 'firebase/app';
 
-// Chave Pública VAPID (Deve ser a mesma do push-notification.ts)
-const VAPID_PUBLIC_KEY = 'BEl62fvEocDi_9guS2g6DBJXPJ6Ouu79No7Adn7SJreiaS-MBoYp97mST9rd5qcJubBen97Isrf8M2VAt9qh_As';
+// Chave Pública VAPID vinda do ambiente (.env)
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -18,7 +18,8 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export const requestPermissionAndSaveToken = async (userId: string) => {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !userId) {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !userId || !VAPID_PUBLIC_KEY) {
+    if (!VAPID_PUBLIC_KEY) console.warn('Webpush: NEXT_PUBLIC_VAPID_PUBLIC_KEY não configurada no .env');
     return;
   }
 
