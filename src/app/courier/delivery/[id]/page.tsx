@@ -7,8 +7,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
-import { useMemo, useState, useEffect } from 'react';
-import { useFirestore, useDoc, useUser } from '@/firebase';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { useUser, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, serverTimestamp, collection, writeBatch } from 'firebase/firestore';
 import type { Delivery, UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,6 +41,7 @@ export default function ActiveDeliveryPage() {
 
   const [isConfirming, setIsConfirming] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<Coords | null>(null);
+  const lastLocationUpdate = useRef<number>(0);
   
   // Estados para o modal de pagamento Pix
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -69,15 +70,14 @@ export default function ActiveDeliveryPage() {
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
+          const now = Date.now();
+          // Throttle local updates to 5 seconds to save battery/UI lag
+          if (now - lastLocationUpdate.current < 5000) return;
+          lastLocationUpdate.current = now;
           setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
         (err) => {
           console.warn("Erro ao obter GPS:", err);
-          toast({
-            title: "GPS Indisponível",
-            description: "Ative a localização para ver sua posição no mapa.",
-            variant: "destructive"
-          });
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
@@ -85,7 +85,7 @@ export default function ActiveDeliveryPage() {
     return () => {
       if (watchId) navigator.geolocation.clearWatch(watchId);
     };
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     if (delivery) {
@@ -117,18 +117,20 @@ export default function ActiveDeliveryPage() {
     }
   }, [delivery]);
 
+  // Lógica de Rotas Dinâmicas pedida pelo usuário:
+  // 1. Se status for 'accepted' (esperando coleta), mostra rota: VOCÊ -> COLETA.
+  // 2. Se status for 'in-progress' (em trânsito), mostra rota: VOCÊ -> ENTREGA.
   const mapStops = useMemo(() => {
     if (!pickupCoords || !dropoffCoords || !delivery) return [];
     
     if (delivery.status === 'accepted') {
       return [
-        { id: 'pickup', lat: pickupCoords.lat, lng: pickupCoords.lng, label: 'Coleta', type: 'pickup' as const },
-        { id: 'dropoff', lat: dropoffCoords.lat, lng: dropoffCoords.lng, label: 'Entrega', type: 'dropoff' as const }
+        { id: 'pickup', lat: pickupCoords.lat, lng: pickupCoords.lng, label: 'Ponto de Coleta', type: 'pickup' as const }
       ];
     }
     
     return [
-      { id: 'dropoff', lat: dropoffCoords.lat, lng: dropoffCoords.lng, label: 'Entrega', type: 'dropoff' as const }
+      { id: 'dropoff', lat: dropoffCoords.lat, lng: dropoffCoords.lng, label: 'Ponto de Entrega', type: 'dropoff' as const }
     ];
   }, [pickupCoords, dropoffCoords, delivery]);
 
@@ -195,8 +197,8 @@ export default function ActiveDeliveryPage() {
     try {
       await updateDoc(deliveryDocRef, { status: 'in-progress' });
       toast({
-        title: "Status Atualizado!",
-        description: "A entrega está agora marcada como 'Em Trânsito'.",
+        title: "Retirada Confirmada!",
+        description: "Agora o mapa mostrará a rota até o local de entrega.",
       });
     } catch(e) {
       console.error(e);
@@ -302,7 +304,7 @@ export default function ActiveDeliveryPage() {
             </Link>
           </Button>
           <div className="flex flex-col items-center">
-            <h2 className="text-sm font-bold uppercase tracking-widest font-headline">{isPickedUp ? 'Em Trânsito' : 'Coleta Pendente'}</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest font-headline">{isPickedUp ? 'Em Trânsito' : 'Indo Coletar'}</h2>
           </div>
           <Button variant="outline" size="icon" className="rounded-full bg-primary/10 text-primary border-primary/20">
             <Phone />
@@ -356,7 +358,7 @@ export default function ActiveDeliveryPage() {
                 <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl p-4 mb-6">
                     <div className="flex items-center gap-2 mb-1">
                     <Info className="text-primary size-4" />
-                    <span className="text-primary font-bold text-xs uppercase tracking-wider">Observações do Cliente</span>
+                    <span className="text-primary font-bold text-xs uppercase tracking-wider">Observações</span>
                     </div>
                     <p className="text-sm leading-relaxed font-medium">
                         "{delivery.observations}"

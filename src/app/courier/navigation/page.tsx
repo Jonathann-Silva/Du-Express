@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, Store, MapPin, Loader2, Navigation as NavIcon, Package, Banknote, Smartphone, RefreshCw, Timer } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -51,6 +51,7 @@ export default function MultiDeliveryNavigation() {
     const [isGeocoding, setIsGeocoding] = useState(true);
     const [isExpanded, setIsExpanded] = useState(true);
     const [now, setNow] = useState(Date.now());
+    const lastLocationUpdate = useRef<number>(0);
 
     useEffect(() => {
         const interval = setInterval(() => setNow(Date.now()), 10000);
@@ -85,7 +86,12 @@ export default function MultiDeliveryNavigation() {
         let watchId: number;
         if (navigator.geolocation) {
             watchId = navigator.geolocation.watchPosition(
-                (pos) => setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                (pos) => {
+                    const now = Date.now();
+                    if (now - lastLocationUpdate.current < 5000) return;
+                    lastLocationUpdate.current = now;
+                    setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                },
                 (err) => console.warn("Erro GPS:", err),
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
@@ -102,33 +108,38 @@ export default function MultiDeliveryNavigation() {
             setIsGeocoding(true);
             const newStops: OptimizedStop[] = [];
 
+            // Prioridade: Coletas primeiro, depois entregas (estratégia combo básica)
             const pickups = deliveries.filter(d => d.status === 'accepted');
             const dropoffs = deliveries.filter(d => d.status === 'in-progress');
 
             for (const d of pickups) {
                 const coords = await geocodeAddress(d.pickup);
-                newStops.push({ 
-                    deliveryId: d.id, 
-                    address: d.pickup, 
-                    type: 'pickup', 
-                    status: d.status, 
-                    coords: coords || undefined,
-                    acceptedAt: d.acceptedAt,
-                    createdAt: d.createdAt
-                });
+                if (coords) {
+                    newStops.push({ 
+                        deliveryId: d.id, 
+                        address: d.pickup, 
+                        type: 'pickup', 
+                        status: d.status, 
+                        coords: coords,
+                        acceptedAt: d.acceptedAt,
+                        createdAt: d.createdAt
+                    });
+                }
             }
 
             for (const d of dropoffs) {
                 const coords = await geocodeAddress(d.dropoff);
-                newStops.push({ 
-                    deliveryId: d.id, 
-                    address: d.dropoff, 
-                    type: 'dropoff', 
-                    status: d.status, 
-                    coords: coords || undefined,
-                    acceptedAt: d.acceptedAt,
-                    createdAt: d.createdAt
-                });
+                if (coords) {
+                    newStops.push({ 
+                        deliveryId: d.id, 
+                        address: d.dropoff, 
+                        type: 'dropoff', 
+                        status: d.status, 
+                        coords: coords,
+                        acceptedAt: d.acceptedAt,
+                        createdAt: d.createdAt
+                    });
+                }
             }
 
             setStops(newStops);
@@ -142,7 +153,6 @@ export default function MultiDeliveryNavigation() {
         const delivery = deliveries?.find(d => d.id === stop.deliveryId);
         if (!delivery) return;
 
-        // Se for uma entrega (dropoff) e o pagamento for 'collect', abre o modal de pagamento
         if (stop.type === 'dropoff' && delivery.paymentMethod === 'collect') {
             setTaskToFinish(delivery);
             setPixStep('choice');
@@ -170,8 +180,10 @@ export default function MultiDeliveryNavigation() {
         const clientNotifRef = doc(collection(firestore, 'notifications'));
         batch.set(clientNotifRef, {
             userId: delivery.clientId,
-            title: nextStatus === 'in-progress' ? 'Seu pedido está em trânsito!' : 'Entrega concluída!',
-            description: nextStatus === 'in-progress' ? 'O entregador coletou seu pedido e está a caminho.' : 'Seu pedido foi entregue com sucesso.',
+            title: nextStatus === 'in-progress' ? 'Coletado!' : 'Entregue!',
+            description: nextStatus === 'in-progress' 
+                ? 'O motoboy retirou seu pedido e já está na rota de entrega.' 
+                : 'Seu pedido foi entregue com sucesso.',
             createdAt: serverTimestamp(),
             read: false,
             icon: nextStatus === 'in-progress' ? 'package' : 'wallet'
@@ -198,6 +210,7 @@ export default function MultiDeliveryNavigation() {
         }, 3000);
     };
 
+    // Gera a rota partindo SEMPRE de onde o motoboy está agora
     const mapStops = useMemo(() => stops.filter(s => s.coords).map(s => ({
         lng: s.coords!.lng,
         lat: s.coords!.lat,
@@ -211,7 +224,7 @@ export default function MultiDeliveryNavigation() {
             <div className="h-full bg-background flex flex-col items-center justify-center p-6 text-center">
                 <Loader2 className="size-12 text-primary animate-spin mb-4" />
                 <h2 className="text-xl font-bold font-headline">Otimizando sua rota...</h2>
-                <p className="text-muted-foreground text-sm mt-2">Calculando a melhor sequência para suas coletas e entregas.</p>
+                <p className="text-muted-foreground text-sm mt-2">Calculando o melhor trajeto a partir da sua localização.</p>
             </div>
         );
     }
@@ -233,8 +246,8 @@ export default function MultiDeliveryNavigation() {
                     <Link href="/courier"><ArrowLeft /></Link>
                 </Button>
                 <div className="text-center">
-                    <h2 className="text-sm font-bold uppercase tracking-widest font-headline">Rota Otimizada</h2>
-                    <p className="text-primary text-[10px] font-bold uppercase">{deliveries.length} Entregas Simultâneas</p>
+                    <h2 className="text-sm font-bold uppercase tracking-widest font-headline">Navegação Live</h2>
+                    <p className="text-primary text-[10px] font-bold uppercase">{deliveries.length} Paradas na Rota</p>
                 </div>
                 <div className="size-10" />
             </header>
@@ -258,10 +271,10 @@ export default function MultiDeliveryNavigation() {
                 <div className="px-6 h-full overflow-y-auto pb-32">
                     <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h3 className="text-2xl font-black font-headline">Roteiro</h3>
-                            <p className="text-sm text-muted-foreground font-medium">{stops.length} paradas restantes</p>
+                            <h3 className="text-2xl font-black font-headline">Próximas Paradas</h3>
+                            <p className="text-sm text-muted-foreground font-medium">{stops.length} destinos restantes</p>
                         </div>
-                        <Badge className="bg-primary/10 text-primary border-primary/20">Modo Combo</Badge>
+                        <Badge className="bg-primary/10 text-primary border-primary/20">GPS em Tempo Real</Badge>
                     </div>
 
                     <div className="space-y-6 relative">
@@ -292,7 +305,7 @@ export default function MultiDeliveryNavigation() {
                                                     "text-[10px] font-bold uppercase tracking-wider",
                                                     isDelayed ? "text-red-600 animate-pulse" : (stop.type === 'pickup' ? "text-primary" : "text-emerald-600")
                                                 )}>
-                                                    {isDelayed ? '⚠ ENTREGA EM ATRASO' : (stop.type === 'pickup' ? 'Coletar em:' : 'Entregar em:')}
+                                                    {isDelayed ? '⚠ EM ATRASO' : (stop.type === 'pickup' ? 'Coletar agora em:' : 'Entregar agora em:')}
                                                 </p>
                                                 <h4 className={cn("font-bold text-base leading-tight mt-0.5", isDelayed && "text-red-600")}>{stop.address}</h4>
                                             </div>
@@ -405,7 +418,7 @@ export default function MultiDeliveryNavigation() {
                     )}
 
                     {pixStep === 'confirmed' && (
-                        <div className="flex flex-col items-center py-10 text-center animate-in zoom-in-95">
+                        <div className="flex flex-col items-center py-10 text-center animate-in zoom-in-95 duration-300">
                             <div className="size-20 rounded-full bg-emerald-500 flex items-center justify-center text-white mb-6">
                                 <CheckCircle size={48} />
                             </div>
