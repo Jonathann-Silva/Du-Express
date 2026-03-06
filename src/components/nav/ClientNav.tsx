@@ -3,10 +3,11 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Home, PlusSquare, History, MessageSquare } from 'lucide-react';
+import { Home, PlusSquare, History, MessageSquare, Wallet } from 'lucide-react';
 
 const navItems = [
   { href: '/client', label: 'Início', icon: Home },
+  { href: '/client/finance', label: 'Financeiro', icon: Wallet },
   { href: '/client/request', label: 'Novo Pedido', icon: PlusSquare },
   { href: '/client/chat', label: 'Chat', icon: MessageSquare },
   { href: '/client/history', label: 'Histórico', icon: History },
@@ -17,17 +18,17 @@ export function ClientNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-t pb-safe-area-inset-bottom">
-        <div className="flex items-center justify-around max-w-md mx-auto h-20">
+        <div className="flex items-center justify-around max-w-md mx-auto h-20 px-2">
           {navItems.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href;
             return (
               <Link href={href} key={label} className={cn(
-                'flex flex-col items-center gap-1',
+                'flex flex-col items-center gap-1 transition-all active:scale-90',
                 isActive ? 'text-primary' : 'text-muted-foreground'
               )}>
-                <Icon className="size-6" fill={isActive ? 'currentColor' : 'none'} />
+                <Icon className="size-5" fill={isActive ? 'currentColor' : 'none'} />
                 <span className={cn(
-                  'text-[10px]',
+                  'text-[9px] uppercase font-black tracking-tighter',
                   isActive ? 'font-bold' : 'font-medium'
                 )}>{label}</span>
               </Link>

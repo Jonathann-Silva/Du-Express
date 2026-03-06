@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
-import { CheckCircle, Package, Plus, Timer, XCircle, ShieldCheck, AlertOctagon, CreditCard, ChevronRight, Loader2, X, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Package, Plus, Timer, XCircle, ShieldCheck, AlertOctagon, CreditCard, ChevronRight, Loader2, X, AlertTriangle, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -270,6 +270,26 @@ export default function ClientHomePage() {
               </CardContent>
             </Card>
           </div>
+        </section>
+
+        {/* Card de Atalho Financeiro */}
+        <section className="px-6 py-2">
+          <Link href="/client/finance">
+            <Card className="bg-card border-none shadow-sm hover:bg-muted/50 transition-all active:scale-[0.98]">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Wallet className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">Financeiro e Pagamentos</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">Ver faturas e pagar via PIX</p>
+                  </div>
+                </div>
+                <ChevronRight className="size-5 text-muted-foreground/50" />
+              </CardContent>
+            </Card>
+          </Link>
         </section>
 
         <section className="px-6 py-4">
