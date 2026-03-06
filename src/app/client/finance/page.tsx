@@ -197,16 +197,20 @@ export default function ClientFinancePage() {
 
   const isLoading = userLoading || loadingDeliveries;
 
-  const isCurrentlyInDebtInPeriod = stats.unpaidWeek > 0;
   const cardStatus = useMemo(() => {
-    if ((isCurrentlyInDebtInPeriod && isPeriodExpired) || (blockStatus.isBlocked && totalDebt > 0)) {
-        return { color: "bg-destructive text-white", label: "PAGAMENTO VENCIDO", icon: <Ban className="size-6" /> };
+    if (stats.unpaidWeek > 0) {
+        return { 
+            color: "bg-destructive text-white", 
+            label: isPeriodExpired ? "PAGAMENTO VENCIDO" : "SALDO PENDENTE", 
+            icon: isPeriodExpired ? <Ban className="size-6" /> : <AlertCircle className="size-6" /> 
+        };
     }
-    if (isCurrentlyInDebtInPeriod) {
-        return { color: "bg-amber-500 text-white", label: "SALDO DA SEMANA", icon: <AlertCircle className="size-6" /> };
-    }
-    return { color: "bg-emerald-500 text-white", label: "CICLO LIQUIDADO", icon: <CheckCircle2 className="size-6" /> };
-  }, [isCurrentlyInDebtInPeriod, isPeriodExpired, blockStatus.isBlocked, totalDebt]);
+    return { 
+        color: "bg-emerald-500 text-white", 
+        label: "CICLO LIQUIDADO", 
+        icon: <CheckCircle2 className="size-6" /> 
+    };
+  }, [stats.unpaidWeek, isPeriodExpired]);
 
   return (
     <div className="flex flex-col h-full bg-background outline-none">
@@ -249,7 +253,7 @@ export default function ClientFinancePage() {
                         {cardStatus.label}
                     </span>
                 </div>
-                <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Saldo Pendente no Período</p>
+                <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Saldo no Período Selecionado</p>
                 {isLoading ? <Skeleton className="h-10 w-32 bg-white/20 mt-1" /> : (
                     <h2 className="text-4xl font-black mt-1">
                         {stats.unpaidWeek.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
