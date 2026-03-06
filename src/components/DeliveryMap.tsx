@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import Map, { Marker, Source, Layer, MapRef } from 'react-map-gl/maplibre';
@@ -5,7 +6,7 @@ import { MapPin, Navigation, Store } from 'lucide-react';
 import { LngLatBounds } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 
-// Using OSM Raster tiles, no API key needed
+// Usando tiles raster do OSM para economia total (gratuito e sem chave de API)
 const osmRasterStyle: StyleSpecification = {
   version: 8,
   sources: {
@@ -13,8 +14,7 @@ const osmRasterStyle: StyleSpecification = {
       type: 'raster',
       tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
       tileSize: 256,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: '&copy; OpenStreetMap contributors',
     },
   },
   layers: [
@@ -23,7 +23,7 @@ const osmRasterStyle: StyleSpecification = {
       type: 'raster',
       source: 'osm-tiles',
       minzoom: 0,
-      maxzoom: 22,
+      maxzoom: 19,
     },
   ],
 };
@@ -43,8 +43,9 @@ interface DeliveryMapProps {
 
 export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMapProps) {
   const mapRef = useRef<MapRef>(null);
+  const lastPointsRef = useRef<string>('');
   
-  // Default to Arapongas, PR
+  // Padrão Arapongas, PR
   const defaultLng = -51.4236;
   const defaultLat = -23.4128;
 
@@ -70,16 +71,20 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
     const fetchRoute = async () => {
       if (!stops || stops.length < 1) return;
       
-      try {
-        const points = [];
-        // Se temos o entregador, a rota começa dele
-        if (currentLocation) {
-          points.push(`${currentLocation.lng},${currentLocation.lat}`);
-        }
-        stops.forEach(s => points.push(`${s.lng},${s.lat}`));
+      const points = [];
+      if (currentLocation) {
+        points.push(`${currentLocation.lng},${currentLocation.lat}`);
+      }
+      stops.forEach(s => points.push(`${s.lng},${s.lat}`));
 
+      const pointsKey = points.join(';');
+      // Evita chamadas repetidas se os pontos forem os mesmos
+      if (pointsKey === lastPointsRef.current) return;
+      lastPointsRef.current = pointsKey;
+      
+      try {
         const response = await fetch(
-          `https://router.project-osrm.org/route/v1/driving/${points.join(';')}?overview=full&geometries=geojson`
+          `https://router.project-osrm.org/route/v1/driving/${pointsKey}?overview=full&geometries=geojson`
         );
         const data = await response.json();
         
@@ -89,18 +94,18 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
             geometry: data.routes[0].geometry,
           });
 
-          // Ajusta o zoom para mostrar toda a operação (entregador + paradas)
+          // Ajusta o zoom apenas na montagem ou mudança significativa
           if (mapRef.current) {
             const coords = data.routes[0].geometry.coordinates;
             const bounds = coords.reduce(
               (b: LngLatBounds, coord: [number, number]) => b.extend(coord),
               new LngLatBounds(coords[0], coords[0])
             );
-            mapRef.current.fitBounds(bounds, { padding: 80, duration: 1000 });
+            mapRef.current.fitBounds(bounds, { padding: 60, duration: 1000 });
           }
         }
       } catch (e) {
-        console.error("Error fetching route:", e);
+        console.error("Erro ao carregar rota OSRM:", e);
       }
     };
 
@@ -119,8 +124,8 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
       {currentLocation && (
         <Marker longitude={currentLocation.lng} latitude={currentLocation.lat} anchor="center">
           <div className="relative">
-            <div className="absolute -inset-2 bg-blue-500/30 rounded-full animate-ping" />
-            <div className="relative size-7 bg-blue-600 rounded-full border-4 border-white shadow-xl flex items-center justify-center">
+            <div className="absolute -inset-2 bg-primary/20 rounded-full animate-ping" />
+            <div className="relative size-7 bg-primary rounded-full border-4 border-white shadow-xl flex items-center justify-center">
               <Navigation className="size-3.5 text-white -rotate-45" fill="white" />
             </div>
           </div>
@@ -155,7 +160,7 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
             paint={{
               'line-color': primaryColor,
               'line-width': 5,
-              'line-opacity': 0.8
+              'line-opacity': 0.6
             }}
           />
         </Source>
