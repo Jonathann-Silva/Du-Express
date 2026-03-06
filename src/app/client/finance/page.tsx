@@ -88,6 +88,29 @@ export default function ClientFinancePage() {
 
   const blockStatus = useMemo(() => checkClientBlockStatus(unpaidDeliveries), [unpaidDeliveries]);
 
+  // Identifica os rótulos das semanas que possuem débitos pendentes
+  const debtWeeksLabels = useMemo(() => {
+    if (!unpaidDeliveries.length) return "";
+    const weeksMap = new Map<number, string>();
+    
+    unpaidDeliveries.forEach(d => {
+      const date = d.createdAt.toDate();
+      const day = getDay(date);
+      const dateForCalc = day === 0 ? subDays(date, 1) : date;
+      const start = startOfWeek(dateForCalc, { weekStartsOn: 1 });
+      start.setHours(0, 0, 0, 0);
+      const end = addDays(start, 5);
+      const label = `${format(start, 'dd/MM')} a ${format(end, 'dd/MM')}`;
+      weeksMap.set(start.getTime(), label);
+    });
+    
+    const sortedLabels = Array.from(weeksMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(entry => entry[1]);
+
+    return sortedLabels.join(", ");
+  }, [unpaidDeliveries]);
+
   // Verifica se o período selecionado está vencido (Prazo: Quarta da semana seguinte)
   const isPeriodExpired = useMemo(() => {
     const deadline = addDays(weekStart, 9); 
@@ -214,7 +237,7 @@ export default function ClientFinancePage() {
                     <div className="mt-4 p-3 bg-black/10 rounded-xl">
                         <p className="text-[10px] font-bold leading-tight">
                             {blockStatus.isBlocked 
-                                ? "ACESSO BLOQUEADO: Você possui débitos vencidos. Regularize o total acumulado para voltar a pedir."
+                                ? `ACESSO BLOQUEADO: Você possui débitos vencidos na semana "${debtWeeksLabels}". Regularize o total acumulado para voltar a pedir.`
                                 : "Existem pendências financeiras em outros períodos."}
                             <br />
                             <span className="text-xs font-black uppercase">Total Acumulado a Pagar: {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
@@ -309,7 +332,7 @@ export default function ClientFinancePage() {
                                         <p className="font-black text-base">{delivery.price.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
                                         <span className={cn(
                                             "text-[9px] font-black uppercase px-1.5 py-0.5 rounded",
-                                            delivery.paidByClient ? "bg-emerald-100 text-emerald-700" : (isPrevCycle ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700")
+                                            delivery.paidByClient ? 'bg-emerald-100 text-emerald-700' : (isPrevCycle ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')
                                         )}>
                                             {delivery.paidByClient ? 'Liquidado' : 'Em Aberto'}
                                         </span>

@@ -4,7 +4,7 @@
 import { useMemo, useEffect, useState } from 'react';
 import { CheckCircle, Package, Plus, Timer, XCircle, ShieldCheck, AlertOctagon, CreditCard, ChevronRight, Loader2, X, AlertTriangle, Wallet } from 'lucide-react';
 import Link from 'next/link';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, startOfDay, startOfWeek, getDay, subDays, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { collection, query, where, doc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 
@@ -76,6 +76,24 @@ export default function ClientHomePage() {
   }, [allDeliveries]);
 
   const blockStatus = useMemo(() => checkClientBlockStatus(unpaidDeliveries), [unpaidDeliveries]);
+
+  // Identifica os rótulos das semanas que possuem débitos pendentes para exibir no aviso
+  const debtWeeksLabels = useMemo(() => {
+    if (!unpaidDeliveries.length) return "";
+    const weeksMap = new Map<number, string>();
+    unpaidDeliveries.forEach(d => {
+      const date = d.createdAt.toDate();
+      const day = getDay(date);
+      const dateForCalc = day === 0 ? subDays(date, 1) : date;
+      const start = startOfWeek(dateForCalc, { weekStartsOn: 1 });
+      start.setHours(0, 0, 0, 0);
+      const end = addDays(start, 5);
+      const label = `${format(start, 'dd/MM')} a ${format(end, 'dd/MM')}`;
+      weeksMap.set(start.getTime(), label);
+    });
+    const sortedLabels = Array.from(weeksMap.entries()).sort((a, b) => a[0] - b[0]).map(entry => entry[1]);
+    return sortedLabels.join(", ");
+  }, [unpaidDeliveries]);
 
   // Lógica de cancelamento automático por tempo para o Cliente
   useEffect(() => {
@@ -192,7 +210,9 @@ export default function ClientHomePage() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-black uppercase tracking-tight leading-none">Acesso Bloqueado</p>
-                    <p className="text-[10px] opacity-90 mt-1">O prazo de pagamento venceu. Regularize seu saldo para solicitar novas entregas.</p>
+                    <p className="text-[10px] opacity-90 mt-1">
+                      Débitos vencidos na semana "{debtWeeksLabels}". Regularize seu saldo para solicitar novas entregas.
+                    </p>
                   </div>
                   <ChevronRight className="size-5 opacity-50" />
                 </CardContent>
