@@ -67,6 +67,12 @@ export type UserProfile = {
     lng: number;
     updatedAt: Timestamp;
   };
+  // Campos de Pagamento
+  pixType?: 'cpf' | 'email' | 'phone' | 'random';
+  pixKey?: string;
+  bankName?: string;
+  bankAgency?: string;
+  bankAccount?: string;
 };
 
 export type Notification = {

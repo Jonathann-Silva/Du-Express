@@ -1,6 +1,8 @@
+
 'use client';
 
-import { ArrowLeft, Wallet, Landmark, Info } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Wallet, Landmark, Info, Loader2, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,10 +14,83 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useUser, useFirestore } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function PaymentMethodsPage() {
+  const { user, userProfile, loading } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // States para os campos
+  const [pixType, setPixType] = useState<string>('');
+  const [pixKey, setPixKey] = useState<string>('');
+  const [bankName, setBankName] = useState<string>('');
+  const [bankAgency, setBankAgency] = useState<string>('');
+  const [bankAccount, setBankAccount] = useState<string>('');
+
+  // Inicializa os campos com os dados do perfil
+  useEffect(() => {
+    if (userProfile) {
+      setPixType(userProfile.pixType || '');
+      setPixKey(userProfile.pixKey || '');
+      setBankName(userProfile.bankName || '');
+      setBankAgency(userProfile.bankAgency || '');
+      setBankAccount(userProfile.bankAccount || '');
+    }
+  }, [userProfile]);
+
+  const handleUpdate = async () => {
+    if (!user?.uid || !firestore) return;
+
+    setIsSaving(true);
+    try {
+      const userRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userRef, {
+        pixType: pixType || null,
+        pixKey: pixKey || null,
+        bankName: bankName || null,
+        bankAgency: bankAgency || null,
+        bankAccount: bankAccount || null,
+      });
+
+      toast({
+        title: "Dados Atualizados!",
+        description: "Suas informações de pagamento foram salvas com sucesso.",
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar pagamento:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível atualizar seus dados. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <header className="p-4 border-b flex items-center">
+          <Skeleton className="size-10 rounded-full" />
+          <Skeleton className="h-6 w-40 mx-auto" />
+        </header>
+        <main className="p-4 space-y-6">
+          <Skeleton className="h-32 w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <>
+    <div className="flex flex-col h-full bg-background">
       <header className="sticky top-0 z-10 flex items-center bg-background/80 backdrop-blur-md p-4 border-b">
         <Button asChild variant="ghost" size="icon">
             <Link href="/courier/profile">
@@ -26,6 +101,7 @@ export default function PaymentMethodsPage() {
             Métodos de Pagamento
         </h1>
       </header>
+      
       <main className="flex-1 overflow-y-auto pb-32">
         <div className="p-4 bg-primary/10 border-b border-primary/20">
             <div className="flex items-start gap-3">
@@ -47,7 +123,7 @@ export default function PaymentMethodsPage() {
                         <Label className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
                             Tipo de Chave PIX
                         </Label>
-                        <Select>
+                        <Select value={pixType} onValueChange={setPixType}>
                             <SelectTrigger className="w-full h-14 rounded-xl text-base">
                                 <SelectValue placeholder="Selecione o tipo de chave" />
                             </SelectTrigger>
@@ -66,6 +142,8 @@ export default function PaymentMethodsPage() {
                         <Input 
                             className="h-14 rounded-xl text-base" 
                             placeholder="Insira sua chave PIX" 
+                            value={pixKey}
+                            onChange={(e) => setPixKey(e.target.value)}
                         />
                     </div>
                 </div>
@@ -87,6 +165,8 @@ export default function PaymentMethodsPage() {
                         <Input 
                             className="h-14 rounded-xl text-base" 
                             placeholder="Ex: Nubank, Itaú" 
+                            value={bankName}
+                            onChange={(e) => setBankName(e.target.value)}
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -97,6 +177,8 @@ export default function PaymentMethodsPage() {
                             <Input 
                                 className="h-14 rounded-xl text-base" 
                                 placeholder="0001" 
+                                value={bankAgency}
+                                onChange={(e) => setBankAgency(e.target.value)}
                             />
                         </div>
                         <div>
@@ -106,6 +188,8 @@ export default function PaymentMethodsPage() {
                             <Input 
                                 className="h-14 rounded-xl text-base" 
                                 placeholder="12345-6" 
+                                value={bankAccount}
+                                onChange={(e) => setBankAccount(e.target.value)}
                             />
                         </div>
                     </div>
@@ -114,14 +198,19 @@ export default function PaymentMethodsPage() {
         </div>
         
         <div className="px-4 py-6">
-            <Button className="w-full h-14 font-bold text-base rounded-xl shadow-lg shadow-primary/25">
-                Atualizar Informações
+            <Button 
+              className="w-full h-14 font-bold text-base rounded-xl shadow-lg shadow-primary/25 gap-2"
+              onClick={handleUpdate}
+              disabled={isSaving}
+            >
+                {isSaving ? <Loader2 className="animate-spin size-5" /> : <CheckCircle2 className="size-5" />}
+                {isSaving ? 'Salvando...' : 'Atualizar Informações'}
             </Button>
             <p className="text-center text-xs text-muted-foreground mt-4 px-6">
-                Alterações nas informações de pagamento podem levar até 24 horas para serem verificadas.
+                Mantenha seus dados atualizados para evitar atrasos no seu repasse semanal.
             </p>
         </div>
       </main>
-    </>
+    </div>
   );
 }
