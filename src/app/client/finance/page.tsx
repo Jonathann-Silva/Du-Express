@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Wallet, CheckCircle2, AlertCircle, Loader2, Info, Banknote, ChevronRight, AlertTriangle, Calendar, Ban, Smartphone, QrCode, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, CreditCard, Wallet, CheckCircle2, AlertCircle, Loader2, Info, Banknote, ChevronRight, AlertTriangle, Calendar, Ban, Smartphone, QrCode, ChevronLeft, HandCoins } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter
 } from "@/components/ui/dialog";
 
 export default function ClientFinancePage() {
@@ -29,6 +30,7 @@ export default function ClientFinancePage() {
   const { toast } = useToast();
   const [isProcessing, setIsUpdating] = useState(false);
   const [isQRCodeOpen, setIsQRCodeOpen] = useState(false);
+  const [isCashDialogOpen, setIsCashDialogOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // Cálculo do Ciclo Semanal (Seg-Sáb)
@@ -108,7 +110,7 @@ export default function ClientFinancePage() {
     return unpaidDeliveries.reduce((sum, d) => sum + (d.price || 0), 0);
   }, [unpaidDeliveries]);
 
-  const handlePayDeliveries = async () => {
+  const handlePayDeliveries = async (method: 'pix' | 'cash') => {
     if (!firestore || unpaidDeliveries.length === 0) return;
     
     setIsUpdating(true);
@@ -125,7 +127,7 @@ export default function ClientFinancePage() {
         batch.set(notifRef, {
             userId: 'admin', 
             title: 'Lucas Expresso',
-            description: `💰 Pagamento PIX de ${totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} recebido de ${userProfile?.displayName}.`,
+            description: `💰 Pagamento em ${method === 'pix' ? 'PIX' : 'DINHEIRO'} de ${totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} informado por ${userProfile?.displayName}.`,
             createdAt: serverTimestamp(),
             read: false,
             icon: 'wallet'
@@ -135,9 +137,10 @@ export default function ClientFinancePage() {
             await batch.commit();
             toast({
                 title: "Pagamento Confirmado!",
-                description: "Obrigado! Suas entregas foram marcadas como pagas.",
+                description: method === 'pix' ? "Obrigado! Suas entregas foram liquidadas via PIX." : "Obrigado! O pagamento em dinheiro foi registrado.",
             });
             setIsQRCodeOpen(false);
+            setIsCashDialogOpen(false);
         } catch (e) {
             toast({ title: "Erro ao processar", variant: "destructive" });
         } finally {
@@ -236,22 +239,37 @@ export default function ClientFinancePage() {
             </Card>
         </section>
 
-        {/* BOTÃO DE PAGAMENTO - Sempre visível se houver dívida */}
+        {/* BOTÕES DE PAGAMENTO - Sempre visíveis se houver dívida */}
         {totalDebt > 0 && (
             <section className="mb-8 space-y-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Regularizar Conta</h3>
-                <Card className="p-5 border-2 border-primary shadow-xl bg-primary text-white cursor-pointer active:scale-[0.98] transition-all hover:brightness-110" onClick={() => setIsQRCodeOpen(true)}>
-                    <div className="flex items-center gap-4">
-                        <div className="size-14 rounded-2xl bg-white text-primary flex items-center justify-center shadow-lg">
-                            <QrCode className="size-8" />
+                <div className="grid grid-cols-1 gap-3">
+                    <Card className="p-5 border-2 border-primary shadow-xl bg-primary text-white cursor-pointer active:scale-[0.98] transition-all hover:brightness-110" onClick={() => setIsQRCodeOpen(true)}>
+                        <div className="flex items-center gap-4">
+                            <div className="size-14 rounded-2xl bg-white text-primary flex items-center justify-center shadow-lg">
+                                <QrCode className="size-8" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-black text-lg leading-none">Pagar com PIX</p>
+                                <p className="text-xs opacity-90 mt-1">Instantâneo • {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                            </div>
+                            <ChevronRight className="opacity-50" />
                         </div>
-                        <div className="flex-1">
-                            <p className="font-black text-lg leading-none">Pagar com PIX</p>
-                            <p className="text-xs opacity-90 mt-1">Liquidar débitos de {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                    </Card>
+
+                    <Card className="p-5 border-2 border-emerald-600 shadow-xl bg-emerald-600 text-white cursor-pointer active:scale-[0.98] transition-all hover:brightness-110" onClick={() => setIsCashDialogOpen(true)}>
+                        <div className="flex items-center gap-4">
+                            <div className="size-14 rounded-2xl bg-white text-emerald-600 flex items-center justify-center shadow-lg">
+                                <Banknote className="size-8" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-black text-lg leading-none">Pagar em Dinheiro</p>
+                                <p className="text-xs opacity-90 mt-1">Entrega manual • {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                            </div>
+                            <ChevronRight className="opacity-50" />
                         </div>
-                        <ChevronRight className="opacity-50" />
-                    </div>
-                </Card>
+                    </Card>
+                </div>
                 <div className="flex gap-2 p-3 bg-muted/50 rounded-xl border border-dashed">
                     <Info className="size-4 text-muted-foreground shrink-0 mt-0.5" />
                     <p className="text-[10px] text-muted-foreground leading-tight italic">
@@ -310,6 +328,7 @@ export default function ClientFinancePage() {
         </section>
       </main>
 
+      {/* DIALOG PIX */}
       <Dialog open={isQRCodeOpen} onOpenChange={setIsQRCodeOpen}>
         <DialogContent className="max-w-[90vw] rounded-[2rem] p-6 overflow-hidden">
           <DialogHeader className="text-center">
@@ -344,7 +363,7 @@ export default function ClientFinancePage() {
           <div className="mt-2 space-y-3">
             <Button 
               className="w-full h-16 rounded-2xl font-black text-base shadow-xl shadow-primary/20 active:scale-95 transition-all"
-              onClick={handlePayDeliveries}
+              onClick={() => handlePayDeliveries('pix')}
               disabled={isProcessing}
             >
               {isProcessing ? (
@@ -363,12 +382,49 @@ export default function ClientFinancePage() {
               Cancelar
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG DINHEIRO */}
+      <Dialog open={isCashDialogOpen} onOpenChange={setIsCashDialogOpen}>
+        <DialogContent className="max-w-[90vw] rounded-[2rem] p-6 overflow-hidden">
+          <DialogHeader className="text-center">
+            <DialogTitle className="font-headline text-2xl font-black">Pagamento em Dinheiro</DialogTitle>
+            <DialogDescription className="text-sm">
+              Comunique à central que você fará a entrega do valor em espécie.
+            </DialogDescription>
+          </DialogHeader>
           
-          <div className="mt-4 p-3 bg-muted/30 rounded-xl flex gap-3 items-start">
-            <Info className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-[10px] text-muted-foreground leading-tight italic">
-              O sistema dará baixa em todas as suas entregas pendentes imediatamente após a confirmação.
+          <div className="flex flex-col items-center justify-center py-10">
+            <div className="size-24 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-6">
+                <HandCoins className="size-12" />
+            </div>
+            <p className="text-center text-sm text-muted-foreground px-4">
+                Ao confirmar, a central será notificada para coletar o valor de <strong>{totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong> em sua loja.
             </p>
+          </div>
+
+          <div className="space-y-3">
+            <Button 
+              className="w-full h-16 rounded-2xl font-black text-base bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-600/20 active:scale-95 transition-all"
+              onClick={() => handlePayDeliveries('cash')}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="animate-spin mr-2" />
+                  NOTIFICANDO CENTRAL...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="mr-2 size-5" />
+                  CONFIRMAR PAGAMENTO
+                </>
+              )}
+            </Button>
+            <Button variant="ghost" className="w-full text-muted-foreground font-bold" onClick={() => setIsCashDialogOpen(false)} disabled={isProcessing}>
+              Voltar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
