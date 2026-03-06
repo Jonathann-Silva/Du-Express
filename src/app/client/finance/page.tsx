@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -78,8 +77,8 @@ export default function ClientFinancePage() {
       collection(firestore, 'deliveries'),
       where('clientId', '==', user.uid),
       where('status', '==', 'finished'),
-      where('createdAt', >=, Timestamp.fromDate(weekStart)),
-      where('createdAt', <=, Timestamp.fromDate(weekEnd)),
+      where('createdAt', '>=', Timestamp.fromDate(weekStart)),
+      where('createdAt', '<=', Timestamp.fromDate(weekEnd)),
       orderBy('createdAt', 'desc'),
       limit(100)
     );
