@@ -166,7 +166,7 @@ export default function CourierProfilePage() {
                     )}>
                         <div className={cn(
                             "size-10 rounded-xl flex items-center justify-center",
-                            isDeviceRegistered ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
+                            isDeviceRegistered ? "bg-emerald-50 text-white" : "bg-amber-50 text-white"
                         )}>
                             {isDeviceRegistered ? <Smartphone className="size-5" /> : <AlertCircle className="size-5" />}
                         </div>
@@ -207,7 +207,7 @@ export default function CourierProfilePage() {
                         <LogOut className="mr-2" />
                         Sair
                     </Button>
-                    <p className="text-center text-muted-foreground/60 text-xs mt-6">Versão do App 1.0.0 • Construído para Excelência do Entregador</p>
+                    <p className="text-center text-muted-foreground/60 text-xs mt-6">Versão do App 0.0.9 (teste) • Construído para Excelência do Entregador</p>
                 </section>
             </main>
         </>
