@@ -82,12 +82,17 @@ export default function MultiDeliveryNavigation() {
     const timeLimitMin = rulesSetting?.deliveryTimeLimit || 60;
 
     useEffect(() => {
+        let watchId: number;
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
+            watchId = navigator.geolocation.watchPosition(
                 (pos) => setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-                () => console.warn("Location denied")
+                (err) => console.warn("Erro GPS:", err),
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         }
+        return () => {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+        };
     }, []);
 
     useEffect(() => {

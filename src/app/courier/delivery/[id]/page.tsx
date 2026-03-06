@@ -65,13 +65,27 @@ export default function ActiveDeliveryPage() {
   const [geocodingError, setGeocodingError] = useState<string | null>(null);
 
   useEffect(() => {
+    let watchId: number;
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        (err) => console.warn("Location permission denied", err)
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        (err) => {
+          console.warn("Erro ao obter GPS:", err);
+          toast({
+            title: "GPS Indisponível",
+            description: "Ative a localização para ver sua posição no mapa.",
+            variant: "destructive"
+          });
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }
-  }, []);
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [toast]);
 
   useEffect(() => {
     if (delivery) {

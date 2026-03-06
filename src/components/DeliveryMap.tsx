@@ -50,8 +50,8 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
   const defaultLat = -23.4128;
 
   const [viewState, setViewState] = useState({
-    longitude: stops?.[0]?.lng || defaultLng,
-    latitude: stops?.[0]?.lat || defaultLat,
+    longitude: currentLocation?.lng || stops?.[0]?.lng || defaultLng,
+    latitude: currentLocation?.lat || stops?.[0]?.lat || defaultLat,
     zoom: 13,
   });
   
@@ -67,9 +67,34 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
     }
   }, []);
 
+  // Efeito para ajustar o mapa quando a localização atual ou as paradas mudarem
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const bounds = new LngLatBounds();
+    let hasPoints = false;
+
+    if (currentLocation) {
+      bounds.extend([currentLocation.lng, currentLocation.lat]);
+      hasPoints = true;
+    }
+
+    stops.forEach(stop => {
+      bounds.extend([stop.lng, stop.lat]);
+      hasPoints = true;
+    });
+
+    if (hasPoints) {
+      mapRef.current.fitBounds(bounds, { padding: 60, duration: 1000, maxZoom: 15 });
+    }
+  }, [currentLocation, stops]);
+
   useEffect(() => {
     const fetchRoute = async () => {
-      if (!stops || stops.length < 1) return;
+      if (!stops || stops.length < 1) {
+        setRouteGeoJson(null);
+        return;
+      }
       
       const points = [];
       if (currentLocation) {
@@ -78,7 +103,6 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
       stops.forEach(s => points.push(`${s.lng},${s.lat}`));
 
       const pointsKey = points.join(';');
-      // Evita chamadas repetidas se os pontos forem os mesmos
       if (pointsKey === lastPointsRef.current) return;
       lastPointsRef.current = pointsKey;
       
@@ -93,16 +117,6 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
             type: 'Feature',
             geometry: data.routes[0].geometry,
           });
-
-          // Ajusta o zoom apenas na montagem ou mudança significativa
-          if (mapRef.current) {
-            const coords = data.routes[0].geometry.coordinates;
-            const bounds = coords.reduce(
-              (b: LngLatBounds, coord: [number, number]) => b.extend(coord),
-              new LngLatBounds(coords[0], coords[0])
-            );
-            mapRef.current.fitBounds(bounds, { padding: 60, duration: 1000 });
-          }
         }
       } catch (e) {
         console.error("Erro ao carregar rota OSRM:", e);
