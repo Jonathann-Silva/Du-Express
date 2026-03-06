@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -119,6 +120,12 @@ export function AssignCourierDialog({ delivery, onAssign, onCancel }: { delivery
 
   return (
     <>
+      <DialogHeader>
+        <DialogTitle className="font-headline text-xl">Atribuir Entregador</DialogTitle>
+        <DialogDescription>
+          Selecione um motoboy para realizar esta entrega.
+        </DialogDescription>
+      </DialogHeader>
       <div className="py-4 min-h-[20rem] flex flex-col justify-center">
         {loadingCouriers && (
           <div className="space-y-4">
@@ -177,7 +184,7 @@ export function AssignCourierDialog({ delivery, onAssign, onCancel }: { delivery
           </ScrollArea>
         )}
       </div>
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
           <Button onClick={handleAssign} disabled={isAssigning || !selectedCourierId}>
               {isAssigning ? 'Atribuindo...' : `Confirmar ${selectedCourierName}`}
