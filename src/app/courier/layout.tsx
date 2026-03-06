@@ -7,11 +7,10 @@ import { MobileLayout } from '@/components/MobileLayout';
 import { CourierNav } from '@/components/nav/CourierNav';
 import { useUser, useFirestore } from '@/firebase';
 import { requestPermissionAndSaveToken } from '@/firebase/messaging';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { getSocket } from '@/services/socket';
 
 export default function CourierLayout({ children }: { children: ReactNode }) {
   const { user, userProfile } = useUser();
-  const firestore = useFirestore();
   const userRole = userProfile?.role;
   const isOnline = userProfile?.status === 'online';
   const lastUpdateRef = useRef<number>(0);
@@ -21,36 +20,30 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
       // Solicita permissão de notificação Webpush
       requestPermissionAndSaveToken(user.uid);
 
-      // --- OTIMIZAÇÃO PARA PLANO SPARK ---
-      // Sincronização de localização com THROTTLE agressivo (2 minutos)
-      // Cálculo: 15 motoboys x 30 updates/hora (1 a cada 2min) x 10h = 4.500 escritas.
-      // Isso mantém o app dentro do limite de 20.000 escritas gratuitas/dia.
-      
+      // --- RASTREIO VIA VPS (SOCKET.IO) ---
+      // Economia Total: Zero escritas no Firebase para localização
       let watchId: number;
+      const socket = getSocket();
       
-      if (navigator.geolocation && firestore && isOnline) {
+      if (navigator.geolocation && isOnline) {
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const now = Date.now();
-            // Apenas grava no banco se passou 2 minutos (120.000ms) desde a última atualização
-            if (now - lastUpdateRef.current < 120000) return;
+            // Com a VPS, podemos atualizar mais rápido (cada 15 segundos) sem custo
+            if (now - lastUpdateRef.current < 15000) return;
             
             lastUpdateRef.current = now;
-            const userRef = doc(firestore, 'users', user.uid);
             
-            // Gravação não bloqueante (Background)
-            updateDoc(userRef, {
-              lastLocation: {
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-                updatedAt: serverTimestamp()
-              }
-            }).catch(() => {
-                // Falha silenciosa para economizar recursos de erro
+            // Envia para a VPS via WebSocket
+            socket.emit('update-location', {
+              courierId: user.uid,
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              updatedAt: now
             });
           },
-          (err) => console.warn("GPS Throttled:", err),
-          { enableHighAccuracy: false, timeout: 20000, maximumAge: 90000 }
+          (err) => console.warn("GPS via VPS Error:", err),
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
         );
       }
 
@@ -58,7 +51,7 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
         if (watchId) navigator.geolocation.clearWatch(watchId);
       };
     }
-  }, [user?.uid, userRole, firestore, isOnline]);
+  }, [user?.uid, userRole, isOnline]);
 
   return (
     <MobileLayout>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -18,6 +19,7 @@ import { ClientName } from '@/components/info/ClientName';
 import { geocodeAddress, type Coords } from '@/lib/geocoding';
 import type { Delivery, UserProfile } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { getSocket } from '@/services/socket';
 
 const DeliveryMap = dynamic(() => import('@/components/DeliveryMap'), { 
   ssr: false,
@@ -45,6 +47,9 @@ export default function AdminTrackingPage() {
   const [pickupCoords, setPickupCoords] = useState<Coords | null>(null);
   const [dropoffCoords, setDropoffCoords] = useState<Coords | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(true);
+  
+  // Estado para localização em tempo real via Socket (VPS)
+  const [socketLocation, setSocketLocation] = useState<{ lat: number, lng: number, updatedAt: number } | null>(null);
 
   useEffect(() => {
     if (delivery) {
@@ -67,6 +72,22 @@ export default function AdminTrackingPage() {
     }
   }, [delivery]);
 
+  // --- ESCUTA GPS VIA VPS (SOCKET.IO) ---
+  useEffect(() => {
+    if (delivery?.courierId) {
+      const socket = getSocket();
+      
+      // Ouve eventos específicos deste motoboy vindos da VPS
+      socket.on(`location-${delivery.courierId}`, (data) => {
+        setSocketLocation(data);
+      });
+
+      return () => {
+        socket.off(`location-${delivery.courierId}`);
+      };
+    }
+  }, [delivery?.courierId]);
+
   const mapStops = useMemo(() => {
     if (!pickupCoords || !dropoffCoords || !delivery) return [];
     return [
@@ -75,14 +96,24 @@ export default function AdminTrackingPage() {
     ];
   }, [pickupCoords, dropoffCoords, delivery]);
 
-  const courierLocation = useMemo(() => courier?.lastLocation ? { lat: courier.lastLocation.lat, lng: courier.lastLocation.lng } : null, [courier]);
+  // Prioriza a localização da VPS, se não houver, usa a última do Firestore (fallback)
+  const courierLocation = useMemo(() => {
+    if (socketLocation) return { lat: socketLocation.lat, lng: socketLocation.lng };
+    return courier?.lastLocation ? { lat: courier.lastLocation.lat, lng: courier.lastLocation.lng } : null;
+  }, [socketLocation, courier]);
+
+  const lastUpdateText = useMemo(() => {
+    if (socketLocation) return formatDistanceToNow(new Date(socketLocation.updatedAt), { addSuffix: true, locale: ptBR });
+    if (courier?.lastLocation) return formatDistanceToNow(courier.lastLocation.updatedAt.toDate(), { addSuffix: true, locale: ptBR });
+    return null;
+  }, [socketLocation, courier]);
 
   if (loadingDelivery || (delivery?.courierId && loadingCourier)) {
     return (
       <div className="h-full bg-background flex flex-col items-center justify-center p-6 text-center">
         <Loader2 className="size-12 text-primary animate-spin mb-4" />
         <h2 className="text-xl font-bold font-headline">Buscando sinal do GPS...</h2>
-        <p className="text-muted-foreground text-sm mt-2">Conectando à frota da Lucas-Expresso.</p>
+        <p className="text-muted-foreground text-sm mt-2">Conectando à frota via VPS Lucas-Expresso.</p>
       </div>
     );
   }
@@ -105,7 +136,7 @@ export default function AdminTrackingPage() {
           <ArrowLeft />
         </Button>
         <div className="text-center">
-          <h2 className="text-sm font-bold uppercase tracking-widest font-headline">Rastreador ao Vivo</h2>
+          <h2 className="text-sm font-bold uppercase tracking-widest font-headline">Rastreador VPS Live</h2>
         </div>
         <div className="size-10" />
       </header>
@@ -143,16 +174,16 @@ export default function AdminTrackingPage() {
 
             <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-2xl border border-border/50">
               <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20 shrink-0">
-                <Bike className="text-primary size-6" />
+                <Bike className={cn("text-primary size-6", socketLocation && "animate-bounce")} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Entregador</p>
                 <h4 className="font-bold text-base truncate">{courier?.displayName || 'Aguardando Atribuição'}</h4>
                 <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                  {courier?.lastLocation ? (
+                  {lastUpdateText ? (
                     <>
-                      <NavIcon className="size-2.5 text-primary" />
-                      Sinal GPS {formatDistanceToNow(courier.lastLocation.updatedAt.toDate(), { addSuffix: true, locale: ptBR })}
+                      <NavIcon className={cn("size-2.5 text-primary", socketLocation && "animate-pulse")} />
+                      Sinal GPS {lastUpdateText} (via VPS)
                     </>
                   ) : (
                     <span className="text-red-400 italic font-medium">
