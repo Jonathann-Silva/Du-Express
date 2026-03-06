@@ -3,13 +3,13 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Download, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight, AlertCircle, Banknote, CreditCard, Smartphone } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight, AlertCircle, Banknote, CreditCard, Smartphone, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, useDoc } from '@/firebase';
-import { doc, collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy, getDocs, Timestamp, writeBatch, serverTimestamp } from 'firebase/firestore';
 import type { UserProfile, Delivery } from '@/lib/types';
 import { format, startOfWeek, addDays, subDays, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -32,6 +32,7 @@ export default function ClientFinanceDetailsPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [isSettling, setIsSettling] = useState(false);
 
   const { weekStart, weekEnd } = useMemo(() => {
     const day = getDay(currentDate);
@@ -49,29 +50,67 @@ export default function ClientFinanceDetailsPage() {
   const clientRef = useMemo(() => firestore && clientId ? doc(firestore, 'users', clientId) : null, [firestore, clientId]);
   const { data: client, loading: clientLoading } = useDoc<UserProfile>(clientRef);
 
-  useEffect(() => {
+  const fetchDeliveries = async () => {
     if (!firestore || !clientId) return;
     setLoading(true);
-    const q = query(collection(firestore, 'deliveries'), where('clientId', '==', clientId), where('createdAt', '>=', weekStart), where('createdAt', '<=', weekEnd), orderBy('createdAt', 'desc'));
-    getDocs(q).then(snap => setDeliveries(snapshotToDeliveries(snap))).finally(() => setLoading(false));
-  }, [firestore, clientId, weekStart, weekEnd]);
+    const q = query(
+        collection(firestore, 'deliveries'), 
+        where('clientId', '==', clientId), 
+        where('createdAt', '>=', weekStart), 
+        where('createdAt', '<=', weekEnd), 
+        orderBy('createdAt', 'desc')
+    );
+    const snap = await getDocs(q);
+    setDeliveries(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Delivery)));
+    setLoading(false);
+  };
 
-  const snapshotToDeliveries = (snap: any) => snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Delivery));
+  useEffect(() => { fetchDeliveries(); }, [firestore, clientId, weekStart, weekEnd]);
 
   const stats = useMemo(() => {
-    if (!deliveries) return { totalWeek: 0, debtClient: 0, paidInPerson: 0 };
+    if (!deliveries) return { totalWeek: 0, debtClient: 0, paidInPerson: 0, unpaidItems: [] };
     return deliveries.reduce((acc, d) => {
         if (d.status === 'finished') {
             acc.totalWeek += d.price;
-            if (d.paymentMethod === 'credit' && !d.paidByClient) {
+            if (!d.paidByClient) {
                 acc.debtClient += d.price;
+                acc.unpaidItems.push(d);
             } else if (d.paymentMethod !== 'credit') {
                 acc.paidInPerson += d.price;
             }
         }
         return acc;
-    }, { totalWeek: 0, debtClient: 0, paidInPerson: 0 });
+    }, { totalWeek: 0, debtClient: 0, paidInPerson: 0, unpaidItems: [] as Delivery[] });
   }, [deliveries]);
+
+  const handleManualSettle = async () => {
+    if (!firestore || stats.unpaidItems.length === 0) return;
+    setIsSettling(true);
+    const batch = writeBatch(firestore);
+    
+    stats.unpaidItems.forEach(d => {
+        batch.update(doc(firestore, 'deliveries', d.id), { paidByClient: true });
+    });
+
+    batch.set(doc(collection(firestore, 'notifications')), {
+        userId: clientId,
+        title: 'Débitos Liquidados',
+        description: 'A central confirmou o recebimento e baixou seus débitos pendentes.',
+        createdAt: serverTimestamp(),
+        read: false,
+        icon: 'wallet'
+    });
+
+    try {
+        await batch.commit();
+        toast({ title: "Débitos Liquidados!", description: "A conta da loja foi atualizada." });
+        fetchDeliveries();
+    } catch (e) {
+        toast({ title: "Erro ao liquidar", variant: "destructive" });
+    } finally {
+        setIsSettling(false);
+    }
+  };
 
   const handleExportToExcel = () => {
     if (!deliveries?.length) return;
@@ -117,6 +156,20 @@ export default function ClientFinanceDetailsPage() {
                 <p className="text-xl font-black text-emerald-500">{stats.paidInPerson.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
             </Card>
         </section>
+
+        {stats.debtClient > 0 && (
+            <div className="mb-8">
+                <Button 
+                    className="w-full h-14 rounded-2xl font-black text-sm shadow-lg shadow-primary/20 gap-2"
+                    onClick={handleManualSettle}
+                    disabled={isSettling}
+                >
+                    {isSettling ? <Loader2 className="animate-spin" /> : <Wallet className="size-5" />}
+                    BAIXAR DÉBITOS MANUALMENTE ({stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                </Button>
+                <p className="text-[10px] text-center text-muted-foreground mt-2 italic">Use este botão se a loja já pagou por outro meio.</p>
+            </div>
+        )}
 
         <section className="space-y-3">
             <h3 className="text-xs font-black uppercase text-muted-foreground tracking-widest px-1">Registros da Semana</h3>

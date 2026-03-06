@@ -53,7 +53,6 @@ export default function ClientFinancePage() {
   const handleNextWeek = () => setCurrentDate(prev => addWeeks(prev, 1));
 
   // 1. Busca TODAS as entregas finalizadas para o cálculo de bloqueio
-  // Removido o filtro 'paidByClient == false' da query para ser mais robusto com dados antigos/missing
   const allDeliveriesQuery = useMemo(() => {
     if (!firestore || !user?.uid) return null;
     return query(
@@ -125,8 +124,8 @@ export default function ClientFinancePage() {
         const notifRef = doc(collection(firestore, 'notifications'));
         batch.set(notifRef, {
             userId: 'admin', 
-            title: 'Pagamento Recebido!',
-            description: `${userProfile?.displayName} realizou o pagamento via PIX de R$ ${totalDebt.toFixed(2)}.`,
+            title: 'Lucas Expresso',
+            description: `💰 Pagamento PIX de ${totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} recebido de ${userProfile?.displayName}.`,
             createdAt: serverTimestamp(),
             read: false,
             icon: 'wallet'
@@ -151,7 +150,6 @@ export default function ClientFinancePage() {
 
   const isCurrentlyInDebtInPeriod = stats.unpaidWeek > 0;
   const cardStatus = useMemo(() => {
-    // Se a semana está vencida E tem dívida nela, ou se o app está bloqueado globalmente
     if ((isCurrentlyInDebtInPeriod && isPeriodExpired) || (blockStatus.isBlocked && totalDebt > 0)) {
         return { color: "bg-destructive text-white", label: "PAGAMENTO VENCIDO", icon: <Ban className="size-6" /> };
     }
@@ -238,25 +236,26 @@ export default function ClientFinancePage() {
             </Card>
         </section>
 
+        {/* BOTÃO DE PAGAMENTO - Sempre visível se houver dívida */}
         {totalDebt > 0 && (
             <section className="mb-8 space-y-4">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Pagar Total Acumulado</h3>
-                <Card className="p-4 border-primary/20 bg-primary/5 cursor-pointer active:scale-[0.98] transition-all" onClick={() => setIsQRCodeOpen(true)}>
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Regularizar Conta</h3>
+                <Card className="p-5 border-2 border-primary shadow-xl bg-primary text-white cursor-pointer active:scale-[0.98] transition-all hover:brightness-110" onClick={() => setIsQRCodeOpen(true)}>
                     <div className="flex items-center gap-4">
-                        <div className="size-12 rounded-xl bg-[#32BCAD] flex items-center justify-center shadow-lg">
-                            <Smartphone className="text-white size-6" />
+                        <div className="size-14 rounded-2xl bg-white text-primary flex items-center justify-center shadow-lg">
+                            <QrCode className="size-8" />
                         </div>
                         <div className="flex-1">
-                            <p className="font-bold text-sm">Gerar QR Code PIX</p>
-                            <p className="text-xs text-muted-foreground">Pagar saldo total de {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                            <p className="font-black text-lg leading-none">Pagar com PIX</p>
+                            <p className="text-xs opacity-90 mt-1">Liquidar débitos de {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                         </div>
-                        <ChevronRight className="text-primary/40" />
+                        <ChevronRight className="opacity-50" />
                     </div>
                 </Card>
                 <div className="flex gap-2 p-3 bg-muted/50 rounded-xl border border-dashed">
                     <Info className="size-4 text-muted-foreground shrink-0 mt-0.5" />
                     <p className="text-[10px] text-muted-foreground leading-tight italic">
-                        O vencimento da semana fechada ocorre toda Quarta-Feira subsequente. Pagamentos via PIX dão baixa imediata.
+                        O vencimento ocorre toda Quarta-Feira. Pagamentos via PIX no app liberam seu acesso instantaneamente.
                     </p>
                 </div>
             </section>
