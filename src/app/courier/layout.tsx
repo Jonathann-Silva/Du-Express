@@ -18,23 +18,27 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user && userRole === 'courier') {
-      // Solicita permissão de notificação
+      // Solicita permissão de notificação Webpush
       requestPermissionAndSaveToken(user.uid);
 
-      // Sincronização de localização em tempo real com THROTTLE agressivo (2 minutos)
-      // Otimização para plano gratuito do Firebase: 40 usuários x 1 update/2min = 28.800 escritas/dia
+      // --- OTIMIZAÇÃO PARA PLANO SPARK ---
+      // Sincronização de localização com THROTTLE agressivo (2 minutos)
+      // Cálculo: 15 motoboys x 30 updates/hora (1 a cada 2min) x 10h = 4.500 escritas.
+      // Isso mantém o app dentro do limite de 20.000 escritas gratuitas/dia.
+      
       let watchId: number;
       
-      // SÓ RASTREIA SE ESTIVER ONLINE
       if (navigator.geolocation && firestore && isOnline) {
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const now = Date.now();
-            // Apenas atualiza se passou 2 minutos desde a última gravação (120.000ms)
+            // Apenas grava no banco se passou 2 minutos (120.000ms) desde a última atualização
             if (now - lastUpdateRef.current < 120000) return;
             
             lastUpdateRef.current = now;
             const userRef = doc(firestore, 'users', user.uid);
+            
+            // Gravação não bloqueante (Background)
             updateDoc(userRef, {
               lastLocation: {
                 lat: pos.coords.latitude,
@@ -42,11 +46,11 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
                 updatedAt: serverTimestamp()
               }
             }).catch(() => {
-                // Falha silenciosa para não atrapalhar a experiência
+                // Falha silenciosa para economizar recursos de erro
             });
           },
-          (err) => console.warn("Erro ao rastrear localização GPS:", err),
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+          (err) => console.warn("GPS Throttled:", err),
+          { enableHighAccuracy: false, timeout: 20000, maximumAge: 90000 }
         );
       }
 

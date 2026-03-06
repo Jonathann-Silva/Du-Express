@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { MobileLayout } from '@/components/MobileLayout';
 import { AdminNav } from '@/components/nav/AdminNav';
 import { useUser, useFirestore, useAuth } from '@/firebase';
-import { doc, writeBatch, serverTimestamp, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { requestPermissionAndSaveToken } from '@/firebase/messaging';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -56,12 +56,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       if (!statusUpdateRef.current) {
         setAdminStatus(true);
         statusUpdateRef.current = true;
-        // REGISTRA O APARELHO DO ADMIN PARA WEB PUSH
+        // Registra dispositivo para Webpush
         requestPermissionAndSaveToken(user.uid);
       }
-
-      // IMPORTANTE: Removemos o listener de 'pending' que disparava notificações de navegador
-      // porque agora usamos Webpush real (via sw.js) que funciona com o app fechado.
 
       const handleUnload = () => {
         setAdminStatus(false);
@@ -70,13 +67,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       return () => {
         window.removeEventListener('beforeunload', handleUnload);
+        // Pequeno delay para evitar que refresh de página marque como offline
         timeoutRef.current = setTimeout(() => {
           setAdminStatus(false);
           statusUpdateRef.current = false;
-        }, 5000);
+        }, 10000);
       };
     }
-  }, [user?.uid, userProfile?.role, setAdminStatus, firestore]);
+  }, [user?.uid, userProfile?.role, setAdminStatus]);
 
   return (
     <MobileLayout>
