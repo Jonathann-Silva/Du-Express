@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, doc, writeBatch, serverTimestamp, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, serverTimestamp, orderBy, limit, Timestamp, getDocs } from 'firebase/firestore';
 import type { Delivery } from '@/lib/types';
 import { format, startOfWeek, isBefore, getDay, subDays, addDays, subWeeks, addWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { cn, checkClientBlockStatus } from '@/lib/utils';
+import { sendPushNotification } from "@/services/push-notification";
 import {
   Dialog,
   DialogContent,
@@ -77,8 +78,8 @@ export default function ClientFinancePage() {
       collection(firestore, 'deliveries'),
       where('clientId', '==', user.uid),
       where('status', '==', 'finished'),
-      where('createdAt', '>=', Timestamp.fromDate(weekStart)),
-      where('createdAt', '<=', Timestamp.fromDate(weekEnd)),
+      where('createdAt', >=, Timestamp.fromDate(weekStart)),
+      where('createdAt', <=, Timestamp.fromDate(weekEnd)),
       orderBy('createdAt', 'desc'),
       limit(100)
     );
@@ -141,26 +142,49 @@ export default function ClientFinancePage() {
     setTimeout(async () => {
         const batch = writeBatch(firestore);
         
-        unpaidDeliveries.forEach(delivery => {
-            const dRef = doc(firestore, 'deliveries', delivery.id);
-            batch.update(dRef, { paidByClient: true });
-        });
+        // APENAS PIX: Liquidamos automaticamente (simulando integração instantânea)
+        if (method === 'pix') {
+            unpaidDeliveries.forEach(delivery => {
+                const dRef = doc(firestore, 'deliveries', delivery.id);
+                batch.update(dRef, { paidByClient: true });
+            });
+        }
 
+        // Notificação interna para o Admin
         const notifRef = doc(collection(firestore, 'notifications'));
         batch.set(notifRef, {
             userId: 'admin', 
             title: 'Lucas Expresso',
-            description: `💰 Pagamento em ${method === 'pix' ? 'PIX' : 'DINHEIRO'} de ${totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} informado por ${userProfile?.displayName}.`,
+            description: method === 'pix' 
+                ? `💰 Pagamento PIX de ${totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} realizado por ${userProfile?.displayName}.`
+                : `💵 Solicitação de baixa em DINHEIRO de ${totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} por ${userProfile?.displayName}.`,
             createdAt: serverTimestamp(),
             read: false,
-            icon: 'wallet'
+            icon: 'wallet',
+            link: `/admin/finance/${user?.uid}`
         });
 
         try {
             await batch.commit();
+
+            // Notificação Push para o Admin
+            const adminSnap = await getDocs(query(collection(firestore, 'users'), where('role', '==', 'admin'), limit(1)));
+            const adminData = adminSnap.docs[0]?.data();
+            if (adminData?.pushSubscription) {
+                await sendPushNotification(adminData.pushSubscription, {
+                    title: 'Lucas Expresso',
+                    body: method === 'pix' 
+                        ? `💰 Pagamento PIX de ${userProfile?.displayName} recebido.`
+                        : `💵 ${userProfile?.displayName} aguarda baixa em DINHEIRO.`,
+                    url: `/admin/finance/${user?.uid}`
+                });
+            }
+
             toast({
-                title: "Pagamento Confirmado!",
-                description: method === 'pix' ? "Obrigado! Suas entregas foram liquidadas via PIX." : "Obrigado! O pagamento em dinheiro foi registrado.",
+                title: method === 'pix' ? "Pagamento Confirmado!" : "Central Notificada!",
+                description: method === 'pix' 
+                    ? "Obrigado! Suas entregas foram liquidadas via PIX." 
+                    : "A central foi avisada. Seu acesso será liberado assim que o administrador confirmar o recebimento do dinheiro.",
             });
             setIsQRCodeOpen(false);
             setIsCashDialogOpen(false);
@@ -262,7 +286,6 @@ export default function ClientFinancePage() {
             </Card>
         </section>
 
-        {/* BOTÕES DE PAGAMENTO - Sempre visíveis se houver dívida */}
         {totalDebt > 0 && (
             <section className="mb-8 space-y-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Regularizar Conta</h3>
@@ -274,7 +297,7 @@ export default function ClientFinancePage() {
                             </div>
                             <div className="flex-1">
                                 <p className="font-black text-lg leading-none">Pagar com PIX</p>
-                                <p className="text-xs opacity-90 mt-1">Instantâneo • {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                <p className="text-xs opacity-90 mt-1">Liberação Instantânea • {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                             </div>
                             <ChevronRight className="opacity-50" />
                         </div>
@@ -287,7 +310,7 @@ export default function ClientFinancePage() {
                             </div>
                             <div className="flex-1">
                                 <p className="font-black text-lg leading-none">Pagar em Dinheiro</p>
-                                <p className="text-xs opacity-90 mt-1">Entrega manual • {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                <p className="text-xs opacity-90 mt-1">Aguardar confirmação • {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                             </div>
                             <ChevronRight className="opacity-50" />
                         </div>
@@ -296,7 +319,7 @@ export default function ClientFinancePage() {
                 <div className="flex gap-2 p-3 bg-muted/50 rounded-xl border border-dashed">
                     <Info className="size-4 text-muted-foreground shrink-0 mt-0.5" />
                     <p className="text-[10px] text-muted-foreground leading-tight italic">
-                        O vencimento ocorre toda Quarta-Feira. Pagamentos via PIX no app liberam seu acesso instantaneamente.
+                        O vencimento ocorre toda Quarta-Feira. Pagamentos via PIX liberam o sistema na hora. Pagamentos em dinheiro dependem da confirmação manual da central.
                     </p>
                 </div>
             </section>
@@ -414,17 +437,22 @@ export default function ClientFinancePage() {
           <DialogHeader className="text-center">
             <DialogTitle className="font-headline text-2xl font-black">Pagamento em Dinheiro</DialogTitle>
             <DialogDescription className="text-sm">
-              Comunique à central que você fará a entrega do valor em espécie.
+              Notifique a central sobre o pagamento manual.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex flex-col items-center justify-center py-10">
-            <div className="size-24 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-6">
-                <HandCoins className="size-12" />
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="size-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-6">
+                <HandCoins className="size-10" />
             </div>
             <p className="text-center text-sm text-muted-foreground px-4">
-                Ao confirmar, a central será notificada para coletar o valor de <strong>{totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong> em sua loja.
+                Você está informando que pagará o valor de <strong>{totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong> em espécie.
             </p>
+            <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                <p className="text-center text-[11px] text-amber-700 font-bold leading-tight uppercase">
+                    ⚠️ Importante: Seu acesso permanecerá bloqueado até que o administrador confirme o recebimento.
+                </p>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -436,12 +464,12 @@ export default function ClientFinancePage() {
               {isProcessing ? (
                 <>
                   <Loader2 className="animate-spin mr-2" />
-                  NOTIFICANDO CENTRAL...
+                  AVISANDO CENTRAL...
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="mr-2 size-5" />
-                  CONFIRMAR PAGAMENTO
+                  CONFIRMAR E NOTIFICAR
                 </>
               )}
             </Button>
