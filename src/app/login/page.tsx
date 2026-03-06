@@ -71,8 +71,11 @@ function LoginContent() {
       }
     } catch (error: any) {
         let description = "Ocorreu um erro desconhecido. Tente novamente.";
+        
         if (error.code === 'auth/invalid-credential') {
             description = "As credenciais fornecidas estão incorretas. Verifique seu e-mail e senha.";
+        } else if (error.code === 'auth/user-disabled') {
+            description = "Esta conta foi desativada pelo administrador. Entre em contato com o suporte para mais informações.";
         } else if (error.code === 'auth/too-many-requests') {
             description = "O acesso a esta conta foi temporariamente desativado devido a muitas tentativas de login. Tente novamente mais tarde.";
         } else {
