@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Wallet, Landmark, Info, Loader2, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +24,7 @@ export default function PaymentMethodsPage() {
   const { user, userProfile, loading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
   
   const [isSaving, setIsSaving] = useState(false);
   
@@ -62,6 +64,9 @@ export default function PaymentMethodsPage() {
         title: "Dados Atualizados!",
         description: "Suas informações de pagamento foram salvas com sucesso.",
       });
+
+      // Retorna automaticamente para a página anterior
+      router.back();
     } catch (error) {
       console.error("Erro ao atualizar pagamento:", error);
       toast({
