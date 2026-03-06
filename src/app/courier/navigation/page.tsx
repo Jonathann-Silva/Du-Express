@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -88,7 +87,8 @@ export default function MultiDeliveryNavigation() {
             watchId = navigator.geolocation.watchPosition(
                 (pos) => {
                     const now = Date.now();
-                    if (now - lastLocationUpdate.current < 5000) return;
+                    // Atualiza a cada 3 segundos na navegação combo
+                    if (now - lastLocationUpdate.current < 3000) return;
                     lastLocationUpdate.current = now;
                     setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
                 },

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ArrowLeft, Phone, MessageCircle, Info, CheckCircle, MapPin, Loader2, Package, Map as MapIcon, Banknote, Smartphone, RefreshCw } from 'lucide-react';
@@ -71,8 +70,8 @@ export default function ActiveDeliveryPage() {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
           const now = Date.now();
-          // Throttle local updates to 5 seconds to save battery/UI lag
-          if (now - lastLocationUpdate.current < 5000) return;
+          // Atualiza a posição local a cada 3 segundos para o mapa do entregador
+          if (now - lastLocationUpdate.current < 3000) return;
           lastLocationUpdate.current = now;
           setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
@@ -117,9 +116,7 @@ export default function ActiveDeliveryPage() {
     }
   }, [delivery]);
 
-  // Lógica de Rotas Dinâmicas pedida pelo usuário:
-  // 1. Se status for 'accepted' (esperando coleta), mostra rota: VOCÊ -> COLETA.
-  // 2. Se status for 'in-progress' (em trânsito), mostra rota: VOCÊ -> ENTREGA.
+  // Lógica de Rotas Dinâmicas:
   const mapStops = useMemo(() => {
     if (!pickupCoords || !dropoffCoords || !delivery) return [];
     

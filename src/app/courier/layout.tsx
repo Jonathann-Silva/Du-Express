@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -29,8 +28,8 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const now = Date.now();
-            // Com a VPS, podemos atualizar mais rápido (cada 15 segundos) sem custo
-            if (now - lastUpdateRef.current < 15000) return;
+            // Com a VPS, atualizamos a cada 3 segundos para fluidez máxima sem custo
+            if (now - lastUpdateRef.current < 3000) return;
             
             lastUpdateRef.current = now;
             
@@ -43,7 +42,7 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
             });
           },
           (err) => console.warn("GPS via VPS Error:", err),
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       }
 
