@@ -1,7 +1,7 @@
 'use client';
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, Bike, Loader2, Mail, Lock } from 'lucide-react';
+import { ArrowRight, Bike, Loader2, Mail, Lock, Calculator } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
@@ -146,6 +146,16 @@ function LoginContent() {
         <p className="text-center text-xs text-muted-foreground mt-4 px-6">
             Insira suas credenciais para acessar o painel. O acesso é liberado por um administrador.
         </p>
+
+        <div className="mt-8 pt-6 border-t border-dashed">
+          <p className="text-center text-sm font-bold text-muted-foreground mb-3 uppercase tracking-widest text-[10px]">Ainda não é parceiro?</p>
+          <Button variant="outline" className="w-full py-7 rounded-2xl border-primary/30 text-primary hover:bg-primary/5 font-black shadow-sm" asChild>
+            <a href="https://wa.me/5543988536639?text=Olá! Gostaria de um orçamento para entregas na minha loja." target="_blank" rel="noopener noreferrer">
+              <Calculator className="mr-2 size-5" />
+              ORÇAMENTO DE ENTREGAS
+            </a>
+          </Button>
+        </div>
 
       </main>
 
