@@ -1,13 +1,13 @@
 'use client';
 
-import { ArrowLeft, Wallet, Map, ArrowRight, Loader2, CircleDot, MapPin, AlertCircle, CreditCard, Banknote, CheckCircle2, ShieldAlert, Smartphone } from "lucide-react";
+import { ArrowLeft, Wallet, Map, ArrowRight, Loader2, CircleDot, MapPin, AlertCircle, CreditCard, Banknote, CheckCircle2, ShieldAlert, Smartphone, Timer } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useUser, useFirestore, useCollection } from "@/firebase";
+import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
 import { collection, addDoc, serverTimestamp, getDocs, query, where, limit, doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -33,6 +33,14 @@ export default function RequestDeliveryPage() {
 
   const [dropoffStreet, setDropoffStreet] = useState("");
   const [dropoffNumber, setDropoffNumber] = useState("");
+
+  // Busca o tempo médio de entrega definido pelo Admin
+  const rulesRef = useMemo(() => (
+    firestore ? doc(firestore, 'settings', 'rules') : null
+  ), [firestore]);
+  
+  const { data: rulesSetting } = useDoc<{ deliveryTimeLimit?: number }>(rulesRef);
+  const timeLimitDisplay = rulesSetting?.deliveryTimeLimit || 45;
 
   const deliveriesQuery = useMemo(() => {
     if (!firestore || !user?.uid) return null;
@@ -186,6 +194,20 @@ export default function RequestDeliveryPage() {
 
       <main className="flex-1 overflow-y-auto pb-32 outline-none">
         <form onSubmit={handleRequest} className="px-4 py-6 space-y-8 max-w-md mx-auto">
+          
+          {/* Alerta de Tempo Médio de Entrega */}
+          <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Timer className="size-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Compromisso Lucas-Expresso</p>
+              <p className="text-sm font-medium mt-1 leading-tight">
+                Nosso tempo de entrega é média de <span className="font-bold text-primary">{timeLimitDisplay} minutos</span>.
+              </p>
+            </div>
+          </div>
+
           <section className="space-y-4">
             <div className="flex items-center justify-between px-1">
               <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest font-headline">1. Tipo de Entrega</h2>

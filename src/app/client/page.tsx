@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -50,6 +49,13 @@ export default function ClientHomePage() {
 
   const { data: appStatus, loading: statusLoading } = useDoc<AppStatus>(statusDocRef);
   const isAdminOnline = appStatus?.adminOnline;
+
+  // Busca regras de tempo limite
+  const rulesRef = useMemo(() => (
+    firestore ? doc(firestore, 'settings', 'rules') : null
+  ), [firestore]);
+  const { data: rulesSetting } = useDoc<{ deliveryTimeLimit?: number }>(rulesRef);
+  const timeLimitDisplay = rulesSetting?.deliveryTimeLimit || 45;
 
   const inProgressQuery = useMemo(() => {
     if (!firestore || !user?.uid) return null;
@@ -308,9 +314,8 @@ export default function ClientHomePage() {
                 </div>
                 <ChevronRight className="size-5 text-muted-foreground/50" />
               </CardContent>
-            </Card>
-          </Link>
-        </section>
+            </Link>
+          </section>
 
         <section className="px-6 py-4">
           {isLoading ? (
@@ -324,12 +329,17 @@ export default function ClientHomePage() {
               Solicitar Nova Entrega
             </Button>
           ) : (
-            <Button asChild className="w-full font-bold py-6 rounded-xl text-base">
-              <Link href="/client/request">
-                <Plus className="size-5" />
-                Solicitar Nova Entrega
-              </Link>
-            </Button>
+            <>
+              <Button asChild className="w-full font-bold py-6 rounded-xl text-base mb-2">
+                <Link href="/client/request">
+                  <Plus className="size-5" />
+                  Solicitar Nova Entrega
+                </Link>
+              </Button>
+              <p className="text-[10px] text-center text-muted-foreground font-medium italic">
+                Tempo médio de entrega: <span className="font-bold">{timeLimitDisplay} minutos</span>
+              </p>
+            </>
           )}
           
           {!isLoading && blockStatus.isBlocked && (
