@@ -314,8 +314,9 @@ export default function ClientHomePage() {
                 </div>
                 <ChevronRight className="size-5 text-muted-foreground/50" />
               </CardContent>
-            </Link>
-          </section>
+            </Card>
+          </Link>
+        </section>
 
         <section className="px-6 py-4">
           {isLoading ? (
@@ -329,8 +330,8 @@ export default function ClientHomePage() {
               Solicitar Nova Entrega
             </Button>
           ) : (
-            <>
-              <Button asChild className="w-full font-bold py-6 rounded-xl text-base mb-2">
+            <div className="space-y-2">
+              <Button asChild className="w-full font-bold py-6 rounded-xl text-base">
                 <Link href="/client/request">
                   <Plus className="size-5" />
                   Solicitar Nova Entrega
@@ -339,7 +340,7 @@ export default function ClientHomePage() {
               <p className="text-[10px] text-center text-muted-foreground font-medium italic">
                 Tempo médio de entrega: <span className="font-bold">{timeLimitDisplay} minutos</span>
               </p>
-            </>
+            </div>
           )}
           
           {!isLoading && blockStatus.isBlocked && (
