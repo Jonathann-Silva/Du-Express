@@ -39,7 +39,7 @@ export default function AdminChatListPage() {
 
   const { data: allUsers, loading: loadingUsers } = useCollection<UserProfile>(usersQuery);
 
-  // Unifica a lista
+  // Unifica a lista e ordena alfabeticamente
   const contactList = useMemo(() => {
     if (!allUsers) return [];
     
@@ -50,7 +50,11 @@ export default function AdminChatListPage() {
             room,
             lastMessageAt: room?.lastMessageAt?.toDate() || new Date(0)
         };
-    }).sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime());
+    }).sort((a, b) => {
+        const nameA = a.user.displayName || '';
+        const nameB = b.user.displayName || '';
+        return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+    });
   }, [allUsers, rooms]);
 
   const filteredContacts = useMemo(() => {
