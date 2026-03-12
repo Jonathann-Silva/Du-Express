@@ -1,60 +1,33 @@
-// Service Worker para Webpush nativo - Lucas Expresso
-self.addEventListener('push', (event) => {
-  if (event.data) {
-    try {
-      const data = event.data.json();
-      
-      const options = {
-        body: data.body || 'Nova atualização do sistema',
-        icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
-        badge: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s',
-        vibrate: [200, 100, 200],
-        tag: 'lucas-expresso-notif',
-        renotify: true,
-        data: {
-          url: data.url || '/'
-        },
-        actions: [
-          { action: 'open', title: 'Abrir Aplicativo' }
-        ]
-      };
 
-      // O título da notificação será priorizado como o enviado pelo servidor,
-      // ou o nome da marca 'Lucas Expresso' como fallback.
-      event.waitUntil(
-        self.registration.showNotification(data.title || 'Lucas Expresso', options)
-      );
-    } catch (e) {
-      console.error('Erro ao processar dados do Push:', e);
-    }
-  }
-});
+/**
+ * @fileOverview Service Worker para Lucas-Expresso
+ * Gerencia cache e atualizações automáticas.
+ * Versão: 0.0.9-t
+ */
 
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  
-  const urlToOpen = event.notification.data?.url || '/';
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Se já houver uma janela aberta, foca nela e navega
-      for (let client of windowClients) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          return client.focus().then(() => client.navigate(urlToOpen));
-        }
-      }
-      // Se não, abre uma nova
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
-    })
-  );
-});
-
+// Força a nova versão a se tornar ativa imediatamente
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
+// Garante que o novo Service Worker assuma o controle de todas as abas abertas
 self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim());
+});
+
+// Listener para mensagens (útil para debug ou comandos manuais)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// Cache básico para funcionamento PWA (pode ser expandido conforme necessidade)
+self.addEventListener('fetch', (event) => {
+  // Estratégia: Network First (prioriza rede para logística em tempo real)
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
+    })
+  );
 });

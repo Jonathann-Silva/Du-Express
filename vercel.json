@@ -1,11 +1,18 @@
+
 {
     "headers": [
       {
-        "source": "/firebase-messaging-sw.js",
+        "source": "/sw.js",
         "headers": [
-          { "key": "Service-Worker-Allowed", "value": "/" },
           { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+          { "key": "Service-Worker-Allowed", "value": "/" },
           { "key": "Content-Type", "value": "application/javascript" }
+        ]
+      },
+      {
+        "source": "/manifest.json",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
         ]
       }
     ]
