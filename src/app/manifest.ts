@@ -1,11 +1,12 @@
+
 import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   const iconUrl = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s';
   
   return {
-    name: 'Lucas Expresso',
-    short_name: 'Lucas Expresso',
+    name: 'Devair Express',
+    short_name: 'Devair Express',
     description: 'App de gerenciamento de entregas e logística.',
     start_url: '/',
     display: 'standalone',

@@ -29,12 +29,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Lucas Expresso',
+  title: 'Devair Express',
   description: 'Seu app de gerenciamento de entregas.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Lucas Expresso',
+    title: 'Devair Express',
   },
   formatDetection: {
     telephone: false,

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -281,7 +282,7 @@ export default function AdminDashboard() {
             {adminPortrait && <Image alt="Admin Portrait" className="w-full h-full object-cover" src={adminPortrait.imageUrl} width={48} height={48} data-ai-hint={adminPortrait.imageHint} />}
           </div>
           <div>
-            <h1 className="text-xs font-medium text-muted-foreground">Lucas Expresso</h1>
+            <h1 className="text-xs font-medium text-muted-foreground">Devair Express</h1>
             <p className="text-lg font-bold text-foreground leading-none font-headline">Painel Admin</p>
           </div>
         </Link>

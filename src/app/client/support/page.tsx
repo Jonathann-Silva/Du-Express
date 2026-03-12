@@ -102,7 +102,7 @@ export default function SupportPage() {
                     </Card>
                 </a>
 
-                <a href="mailto:LucasExpresso@gmail.com" className="block active:scale-[0.98] transition-all">
+                <a href="mailto:DevairExpress@gmail.com" className="block active:scale-[0.98] transition-all">
                     <Card className="hover:bg-muted/50 transition-colors">
                         <CardContent className="p-4 flex items-center gap-4">
                             <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
@@ -110,7 +110,7 @@ export default function SupportPage() {
                             </div>
                             <div className="flex-1">
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">E-mail</p>
-                                <h3 className="text-sm font-bold truncate">LucasExpresso@gmail.com</h3>
+                                <h3 className="text-sm font-bold truncate">DevairExpress@gmail.com</h3>
                             </div>
                             <ChevronRight className="text-muted-foreground/30 size-4" />
                         </CardContent>

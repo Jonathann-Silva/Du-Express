@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -108,7 +109,7 @@ function LoginContent() {
             <h1 className="font-headline text-4xl font-bold tracking-tight">
                 Bem-vindo
             </h1>
-            <p className="font-headline text-2xl font-bold text-primary mt-1">Lucas Expresso</p>
+            <p className="font-headline text-2xl font-bold text-primary mt-1">Devair Express</p>
             <p className="text-muted-foreground mt-2">Faça login para continuar.</p>
         </div>
         

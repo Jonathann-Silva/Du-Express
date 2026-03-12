@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -230,7 +231,7 @@ export default function ClientHomePage() {
         {!isLoading && !blockStatus.isBlocked && blockStatus.isGracePeriod && blockStatus.hasDebt && (
           <section className="px-6 py-2">
             <Link href="/client/finance">
-              <Card className="bg-amber-500 border-none shadow-lg text-white overflow-hidden">
+              <Card className="bg-amber-50 border-none shadow-lg text-white overflow-hidden">
                 <CardContent className="p-4 flex items-center gap-4">
                   <div className="size-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                     <CreditCard className="size-6" />
@@ -255,7 +256,7 @@ export default function ClientHomePage() {
                   <ShieldCheck className={cn("size-4", isAdminOnline ? "text-primary" : "text-muted-foreground")} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Logística Lucas-Expresso</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Logística Devair Express</p>
                   <p className="text-xs font-bold mt-0.5">Admin Central</p>
                 </div>
               </div>
