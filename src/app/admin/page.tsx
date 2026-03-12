@@ -256,21 +256,24 @@ export default function AdminDashboard() {
               {loadingEarnings ? <Skeleton className="h-6 w-20 mt-1" /> : <p className="text-xl font-bold">{dailyEarnings.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
             </CardContent>
           </Card>
-          <Card className="rounded-2xl shadow-sm">
-            <CardContent className="p-5">
-              <TrendingUp className="text-primary size-6 mb-2" />
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Faturamento Semana</p>
-              {loadingWeekly ? <Skeleton className="h-6 w-20 mt-1" /> : <p className="text-xl font-bold">{weeklyTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
-            </CardContent>
-          </Card>
+          
+          <Link href="/admin/finance/history" className="block active:scale-[0.98] transition-transform">
+            <Card className="rounded-2xl shadow-sm bg-primary/5 border-primary/20 hover:border-primary/40 transition-colors">
+              <CardContent className="p-5">
+                <TrendingUp className="text-primary size-6 mb-2" />
+                <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Faturamento Semana</p>
+                {loadingWeekly ? <Skeleton className="h-6 w-20 mt-1" /> : <p className="text-xl font-bold text-primary">{weeklyTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
+              </CardContent>
+            </Card>
+          </Link>
           
           <Link href="/admin/finance/weekly-payouts" className="col-span-2 block active:scale-[0.98] transition-transform">
-            <Card className="rounded-2xl shadow-sm bg-primary/5 border-primary/20 hover:border-primary/40 transition-colors">
+            <Card className="rounded-2xl shadow-sm bg-muted/30 border-muted-foreground/10 hover:border-muted-foreground/20 transition-colors">
               <CardContent className="p-5 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <Banknote className="text-primary size-5" />
-                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">Pagamentos Semana (Seg-Sáb)</p>
+                    <Banknote className="text-muted-foreground size-5" />
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Pagamentos Semana (Seg-Sáb)</p>
                   </div>
                   {loadingWeekly ? <Skeleton className="h-8 w-32 mt-1" /> : <p className="text-2xl font-black text-foreground">{weeklyTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
                 </div>
@@ -279,7 +282,7 @@ export default function AdminDashboard() {
                     <p className="text-[9px] font-bold text-muted-foreground uppercase">Total a Repassar</p>
                     <p className="text-xs font-semibold text-muted-foreground">{weeklyFinished?.length || 0} entregas</p>
                   </div>
-                  <ChevronRight className="text-primary/40 size-5" />
+                  <ChevronRight className="text-muted-foreground/40 size-5" />
                 </div>
               </CardContent>
             </Card>
