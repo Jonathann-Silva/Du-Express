@@ -6,10 +6,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +29,6 @@ import { useUser, useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, limit, doc, writeBatch, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { formatDistanceToNow, startOfDay, startOfWeek, addDays, subDays, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { AssignCourierDialog } from '@/components/AssignCourierDialog';
 import { cn } from '@/lib/utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -77,9 +75,9 @@ const emptyStateMessages: Record<DeliveryStatus, { title: string; description: s
 
 export default function AdminDashboard() {
   const adminPortrait = PlaceHolderImages.find(p => p.id === 'admin-portrait');
-  const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [deliveryToRefuse, setDeliveryToRefuse] = useState<Delivery | null>(null);
   const [isRefusing, setIsRefusing] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<DeliveryStatus>('pending');
   const { user, userProfile, loading: userLoading } = useUser();
   const { toast } = useToast();
@@ -96,11 +94,6 @@ export default function AdminDashboard() {
     if (!firestore || !userProfile || userProfile.role !== 'admin') return null;
     const todayStart = startOfDay(new Date());
     return query(collection(firestore, 'deliveries'), where('status', '==', 'finished'), where('createdAt', '>=', todayStart));
-  }, [firestore, userProfile]);
-
-  const onlineCouriersQuery = useMemo(() => {
-      if (!firestore || !userProfile || userProfile.role !== 'admin') return null;
-      return query(collection(firestore, 'users'), where('role', '==', 'courier'), where('status', '==', 'online'));
   }, [firestore, userProfile]);
 
   // Lógica para Pagamentos da Semana (Segunda a Sábado)
@@ -127,7 +120,6 @@ export default function AdminDashboard() {
 
   const { data: rawRequests, loading: loadingRequests } = useCollection<Delivery>(deliveriesQuery);
   const { data: finishedDeliveries, loading: loadingEarnings } = useCollection<Delivery>(dailyEarningsQuery);
-  const { data: onlineCouriers, loading: loadingOnlineCouriers } = useCollection<UserProfile>(onlineCouriersQuery);
   const { data: weeklyFinished, loading: loadingWeekly } = useCollection<Delivery>(weeklyPaymentsQuery);
   
   // Lógica de cancelamento automático por tempo
@@ -166,7 +158,58 @@ export default function AdminDashboard() {
     return weeklyFinished.reduce((sum, delivery) => sum + delivery.price, 0);
   }, [weeklyFinished]);
 
-  const onlineCouriersCount = useMemo(() => onlineCouriers?.length || 0, [onlineCouriers]);
+  const handleAcceptDirectly = async (delivery: Delivery) => {
+    if (!firestore || !user?.uid) return;
+    setIsActionLoading(delivery.id);
+    
+    const deliveryRef = doc(firestore, 'deliveries', delivery.id);
+    const clientNotifRef = doc(collection(firestore, 'notifications'));
+    const batch = writeBatch(firestore);
+
+    batch.update(deliveryRef, {
+      courierId: user.uid,
+      status: 'accepted',
+      acceptedAt: serverTimestamp()
+    });
+
+    batch.set(clientNotifRef, {
+      userId: delivery.clientId,
+      title: 'Seu pedido foi aceito!',
+      description: 'O administrador aceitou seu pedido e está preparando a coleta.',
+      createdAt: serverTimestamp(),
+      read: false,
+      icon: 'package',
+      link: '/client'
+    });
+
+    try {
+      await batch.commit();
+      toast({ title: "Pedido Aceito!" });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Erro ao aceitar", variant: "destructive" });
+    } finally {
+      setIsActionLoading(null);
+    }
+  };
+
+  const handleUpdateStatus = async (delivery: Delivery, newStatus: DeliveryStatus) => {
+    if (!firestore) return;
+    setIsActionLoading(delivery.id);
+    const deliveryRef = doc(firestore, 'deliveries', delivery.id);
+    
+    try {
+      await updateDoc(deliveryRef, { 
+        status: newStatus,
+        ...(newStatus === 'finished' ? { finishedAt: serverTimestamp() } : {})
+      });
+      toast({ title: newStatus === 'in-progress' ? "Viagem Iniciada!" : "Entrega Finalizada!" });
+    } catch (e) {
+      toast({ title: "Erro ao atualizar", variant: "destructive" });
+    } finally {
+      setIsActionLoading(null);
+    }
+  };
 
   const handleCancelAction = (delivery: Delivery, shouldCharge: boolean) => {
     if (!firestore) return;
@@ -178,7 +221,6 @@ export default function AdminDashboard() {
     let baseReason = delivery.cancelRequested ? 'Cancelamento solicitado pela loja.' : 'Recusado pelo administrador.';
     
     if (shouldCharge) {
-      // Se cobra, o status vira 'finished' para entrar no financeiro
       const finalReason = `${baseReason} Cobrança de deslocamento aplicada pela central.`;
       batch.update(deliveryRef, { 
         status: 'finished', 
@@ -196,7 +238,6 @@ export default function AdminDashboard() {
         link: '/client/history'
       });
     } else {
-      // Se não cobra, o status é 'refused' e o preço é zerado
       const finalReason = `${baseReason} Sem cobrança de taxa de corrida.`;
       batch.update(deliveryRef, { 
         status: 'refused', 
@@ -279,7 +320,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Total a Repassar</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Total Bruto</p>
                     <p className="text-xs font-semibold text-muted-foreground">{weeklyFinished?.length || 0} entregas</p>
                   </div>
                   <ChevronRight className="text-muted-foreground/40 size-5" />
@@ -348,21 +389,39 @@ export default function AdminDashboard() {
                   <Separator className="my-3" />
                   <div className="flex items-center justify-between">
                     <p className="text-lg font-bold">R${req.price.toFixed(2)}</p>
-                    <div className="flex gap-2">
-                      {req.status === 'pending' && (
+                    <div className="flex gap-2 flex-1 justify-end">
+                      {isActionLoading === req.id ? (
+                        <Button disabled size="sm" className="w-24"><Loader2 className="animate-spin size-4" /></Button>
+                      ) : (
                         <>
-                          <Button 
-                            variant={req.cancelRequested ? "destructive" : "outline"} 
-                            size="sm" 
-                            onClick={() => setDeliveryToRefuse(req)}
-                          >
-                            {req.cancelRequested ? 'Confirmar Cancelamento' : 'Recusar'}
-                          </Button>
-                          <Button size="sm" onClick={() => setSelectedDelivery(req)} disabled={req.cancelRequested}>Atribuir</Button>
+                          {req.status === 'pending' && (
+                            <>
+                              <Button 
+                                variant={req.cancelRequested ? "destructive" : "outline"} 
+                                size="sm" 
+                                onClick={() => setDeliveryToRefuse(req)}
+                              >
+                                {req.cancelRequested ? 'Confirmar Cancelamento' : 'Recusar'}
+                              </Button>
+                              <Button size="sm" onClick={() => handleAcceptDirectly(req)} disabled={req.cancelRequested}>Aceitar</Button>
+                            </>
+                          )}
+                          {req.status === 'accepted' && (
+                            <>
+                              <Button variant="outline" asChild size="sm"><Link href={`/admin/track/${req.id}`}>Mapa</Link></Button>
+                              <Button size="sm" onClick={() => handleUpdateStatus(req, 'in-progress')}>Iniciar Viagem</Button>
+                            </>
+                          )}
+                          {req.status === 'in-progress' && (
+                            <>
+                              <Button variant="outline" asChild size="sm"><Link href={`/admin/track/${req.id}`}>Rastrear</Link></Button>
+                              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleUpdateStatus(req, 'finished')}>Finalizar</Button>
+                            </>
+                          )}
+                          {req.status === 'finished' && (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Concluído</Badge>
+                          )}
                         </>
-                      )}
-                      {(req.status === 'accepted' || req.status === 'in-progress') && (
-                        <Button asChild size="sm"><Link href="/admin/deliveries">Ver Entrega</Link></Button>
                       )}
                     </div>
                   </div>
@@ -377,18 +436,6 @@ export default function AdminDashboard() {
         </section>
       </main>
 
-      <Dialog open={!!selectedDelivery} onOpenChange={(isOpen) => !isOpen && setSelectedDelivery(null)}>
-        {selectedDelivery && (
-          <DialogContent>
-              <AssignCourierDialog 
-                  delivery={selectedDelivery} 
-                  onAssign={() => setSelectedDelivery(null)}
-                  onCancel={() => setSelectedDelivery(null)}
-              />
-          </DialogContent>
-        )}
-      </Dialog>
-
       <AlertDialog open={!!deliveryToRefuse} onOpenChange={(isOpen) => !isOpen && setDeliveryToRefuse(null)}>
         <AlertDialogContent className="rounded-3xl max-w-[90vw]">
           <AlertDialogHeader>
@@ -397,7 +444,7 @@ export default function AdminDashboard() {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium">
               {deliveryToRefuse?.cancelRequested 
-                ? 'A loja solicitou o cancelamento. Deseja cobrar a corrida por conta de deslocamento do entregador?' 
+                ? 'A loja solicitou o cancelamento. Deseja cobrar a corrida por conta de deslocamento?' 
                 : 'Você está recusando o pedido da loja. Como deseja prosseguir com a cobrança?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
