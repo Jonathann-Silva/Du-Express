@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { CircleDot, MapPin, Package, Bike, Wallet, Truck, CheckCircle, XCircle, Loader2, Banknote, ChevronRight, CreditCard, AlertTriangle } from 'lucide-react';
+import { CircleDot, MapPin, Package, Bike, Wallet, Truck, CheckCircle, XCircle, Loader2, Banknote, ChevronRight, CreditCard, AlertTriangle, TrendingUp } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -54,7 +53,7 @@ const statusDisplayConfig: Record<DeliveryStatus, { icon: React.ReactNode; iconB
   'in-progress': {
     icon: <Truck className="text-emerald-500 size-5" />,
     iconBg: 'bg-emerald-500/10',
-    title: 'Pedidos em Trânsito'
+    title: 'Pedidos Em Trânsito'
   },
   finished: {
     icon: <CheckCircle className="text-slate-500 size-5" />,
@@ -259,9 +258,9 @@ export default function AdminDashboard() {
           </Card>
           <Card className="rounded-2xl shadow-sm">
             <CardContent className="p-5">
-              <Bike className="text-primary size-6 mb-2" />
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Entregadores</p>
-              {loadingOnlineCouriers ? <Skeleton className="h-6 w-20 mt-1" /> : <p className="text-xl font-bold">{onlineCouriersCount} Online</p>}
+              <TrendingUp className="text-primary size-6 mb-2" />
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Faturamento Semana</p>
+              {loadingWeekly ? <Skeleton className="h-6 w-20 mt-1" /> : <p className="text-xl font-bold">{weeklyTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
             </CardContent>
           </Card>
           
