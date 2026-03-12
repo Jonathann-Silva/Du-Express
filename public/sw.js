@@ -1,33 +1,57 @@
+/* eslint-disable no-restricted-globals */
 
-/**
- * @fileOverview Service Worker para Lucas-Expresso
- * Gerencia cache e atualizações automáticas.
- * Versão: 0.0.9-t
- */
+// Service Worker para Lucas Expresso
+// Responsável por garantir que o app possa ser atualizado e tenha capacidades offline básicas.
 
-// Força a nova versão a se tornar ativa imediatamente
+const CACHE_NAME = 'lucas-expresso-cache-v1';
+
+// Ativa o novo service worker imediatamente após a instalação
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Garante que o novo Service Worker assuma o controle de todas as abas abertas
+// Assume o controle de todas as abas abertas imediatamente
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(self.clients.claim());
 });
 
-// Listener para mensagens (útil para debug ou comandos manuais)
+// Estratégia de busca: Network First
+// Tenta buscar na rede primeiro, se falhar (offline), tenta o cache.
+// Isso garante que o usuário sempre veja a versão mais recente quando online.
+self.addEventListener('fetch', (event) => {
+  // Ignora requisições de API, Firebase e WebSockets (GPS)
+  if (
+    event.request.url.includes('firestore.googleapis.com') ||
+    event.request.url.includes('firebasestorage.googleapis.com') ||
+    event.request.url.includes('identitytoolkit.googleapis.com') ||
+    event.request.url.includes('socket.io')
+  ) {
+    return;
+  }
+
+  // Estratégia Network First
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        // Se a resposta for válida, clonamos e guardamos no cache apenas requisições GET
+        if (event.request.method === 'GET' && response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        // Se a rede falhar, tenta o cache
+        return caches.match(event.request);
+      })
+  );
+});
+
+// Escuta mensagens do componente React (PWAUpdater)
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
-});
-
-// Cache básico para funcionamento PWA (pode ser expandido conforme necessidade)
-self.addEventListener('fetch', (event) => {
-  // Estratégia: Network First (prioriza rede para logística em tempo real)
-  event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    })
-  );
 });
