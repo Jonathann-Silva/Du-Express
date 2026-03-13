@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { CircleDot, MapPin, Package, Bike, Wallet, Truck, CheckCircle, XCircle, Loader2, Banknote, ChevronRight, CreditCard, AlertTriangle, TrendingUp } from 'lucide-react';
+import { CircleDot, MapPin, Package, Bike, Wallet, Truck, CheckCircle, XCircle, Loader2, Banknote, ChevronRight, CreditCard, AlertTriangle, TrendingUp, Map } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -119,9 +119,20 @@ export default function AdminDashboard() {
     );
   }, [firestore, userProfile, weeklyRange]);
 
+  // Busca tarefas ativas para o roteirizador
+  const activeTasksQuery = useMemo(() => {
+    if (!firestore || !user?.uid || userProfile?.role !== 'admin') return null;
+    return query(
+      collection(firestore, 'deliveries'),
+      where('courierId', '==', user.uid),
+      where('status', 'in', ['accepted', 'in-progress'])
+    );
+  }, [firestore, user?.uid, userProfile?.role]);
+
   const { data: rawRequests, loading: loadingRequests } = useCollection<Delivery>(deliveriesQuery);
   const { data: finishedDeliveries, loading: loadingEarnings } = useCollection<Delivery>(dailyEarningsQuery);
   const { data: weeklyFinished, loading: loadingWeekly } = useCollection<Delivery>(weeklyPaymentsQuery);
+  const { data: activeTasks, loading: loadingTasks } = useCollection<Delivery>(activeTasksQuery);
   
   // Lógica de cancelamento automático por tempo
   useEffect(() => {
@@ -309,22 +320,25 @@ export default function AdminDashboard() {
             </Card>
           </Link>
           
-          <Link href="/admin/finance/weekly-payouts" className="col-span-2 block active:scale-[0.98] transition-transform">
-            <Card className="rounded-2xl shadow-sm bg-muted/30 border-muted-foreground/10 hover:border-muted-foreground/20 transition-colors">
+          {/* Botão para o Mapa de Rota GPS */}
+          <Link href="/admin/route" className="col-span-2 block active:scale-[0.98] transition-transform">
+            <Card className="rounded-2xl shadow-sm bg-primary text-primary-foreground border-none shadow-lg shadow-primary/20 hover:brightness-110 transition-all">
               <CardContent className="p-5 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Banknote className="text-muted-foreground size-5" />
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Pagamentos Semana (Seg-Sáb)</p>
+                <div className="flex items-center gap-4">
+                  <div className="size-12 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Map className="size-7" />
                   </div>
-                  {loadingWeekly ? <Skeleton className="h-8 w-32 mt-1" /> : <p className="text-2xl font-black text-foreground">{weeklyTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Roteirizador GPS</p>
+                    <h2 className="text-xl font-bold font-headline">Mapa de Entregas</h2>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Total Bruto</p>
-                    <p className="text-xs font-semibold text-muted-foreground">{weeklyFinished?.length || 0} entregas</p>
+                    <p className="text-[9px] font-bold uppercase opacity-80">Pendentes</p>
+                    <p className="text-lg font-black leading-none">{loadingTasks ? '...' : activeTasks?.length || 0}</p>
                   </div>
-                  <ChevronRight className="text-muted-foreground/40 size-5" />
+                  <ChevronRight className="opacity-50 size-5" />
                 </div>
               </CardContent>
             </Card>
