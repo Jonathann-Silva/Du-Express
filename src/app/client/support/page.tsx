@@ -43,7 +43,7 @@ export default function SupportPage() {
   
   const isAdminOnline = appStatus?.adminOnline;
 
-  const whatsappUrl = "https://wa.me/5543988536639";
+  const whatsappUrl = "https://wa.me/5543988377381";
 
   return (
     <>
@@ -93,7 +93,7 @@ export default function SupportPage() {
                             </div>
                             <div className="flex-1">
                                 <p className="text-xs font-bold text-primary uppercase tracking-widest leading-none mb-1">WhatsApp Oficial</p>
-                                <h3 className="text-lg font-bold leading-tight">(43) 98853-6639</h3>
+                                <h3 className="text-lg font-bold leading-tight">(43) 98837-7381</h3>
                                 <p className="text-xs text-muted-foreground mt-0.5">Clique para iniciar conversa</p>
                             </div>
                             <ChevronRight className="text-primary/40 size-5" />
