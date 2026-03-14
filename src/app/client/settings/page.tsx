@@ -307,11 +307,11 @@ export default function ClientSettingsPage() {
                     </div>
                     <Card className={cn(
                         "p-4 border-none shadow-sm flex items-center gap-4",
-                        isDeviceRegistered ? "bg-emerald-500/10 text-emerald-700" : "bg-amber-500/10 text-amber-700"
+                        isDeviceRegistered ? "bg-emerald-50/10 text-emerald-700" : "bg-amber-50/10 text-amber-700"
                     )}>
                         <div className={cn(
                             "size-10 rounded-xl flex items-center justify-center",
-                            isDeviceRegistered ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
+                            isDeviceRegistered ? "bg-emerald-50 text-white" : "bg-amber-50 text-white"
                         )}>
                             {isDeviceRegistered ? <CheckCircle2 className="size-5" /> : <AlertCircle className="size-5" />}
                         </div>
@@ -450,7 +450,11 @@ export default function ClientSettingsPage() {
                     <div className="space-y-3">
                         <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button variant="outline" className="w-full justify-between h-14 rounded-2xl border-muted-foreground/10 bg-card hover:bg-muted font-bold">
+                                <Button 
+                                    variant="outline" 
+                                    className="w-full justify-between h-14 rounded-2xl border-muted-foreground/10 bg-card hover:bg-muted font-bold"
+                                    disabled
+                                >
                                     <span className="flex items-center gap-3">
                                         <Lock className="size-4 text-muted-foreground" />
                                         Alterar Senha
@@ -491,7 +495,7 @@ export default function ClientSettingsPage() {
                 </section>
 
                 <p className="text-center text-[10px] text-muted-foreground/40 font-bold uppercase tracking-widest pb-10">
-                    Lucas Expresso v0.0.9 • Parceiro Comercial
+                    Du Express v0.0.9 • Parceiro Comercial
                 </p>
             </main>
         </div>
