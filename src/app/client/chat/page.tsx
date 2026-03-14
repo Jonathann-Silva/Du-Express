@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ArrowLeft, ShieldCheck, MessageSquare, Headphones } from 'lucide-react';
@@ -50,9 +49,9 @@ export default function ClientChatPage() {
               recipientId="admin"
               recipientProfile={{
                 uid: 'admin',
-                displayName: 'Suporte Lucas-Expresso',
+                displayName: 'Suporte Du Express',
                 role: 'admin',
-                createdAt: userProfile?.createdAt // Dummy
+                createdAt: userProfile?.createdAt 
               } as any}
             />
           )}

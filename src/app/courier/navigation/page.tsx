@@ -87,7 +87,6 @@ export default function MultiDeliveryNavigation() {
             watchId = navigator.geolocation.watchPosition(
                 (pos) => {
                     const now = Date.now();
-                    // Atualiza a cada 3 segundos na navegação combo
                     if (now - lastLocationUpdate.current < 3000) return;
                     lastLocationUpdate.current = now;
                     setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
@@ -108,7 +107,6 @@ export default function MultiDeliveryNavigation() {
             setIsGeocoding(true);
             const newStops: OptimizedStop[] = [];
 
-            // Prioridade: Coletas primeiro, depois entregas (estratégia combo básica)
             const pickups = deliveries.filter(d => d.status === 'accepted');
             const dropoffs = deliveries.filter(d => d.status === 'in-progress');
 
@@ -210,7 +208,6 @@ export default function MultiDeliveryNavigation() {
         }, 3000);
     };
 
-    // Gera a rota partindo SEMPRE de onde o motoboy está agora
     const mapStops = useMemo(() => stops.filter(s => s.coords).map(s => ({
         lng: s.coords!.lng,
         lat: s.coords!.lat,
@@ -282,8 +279,6 @@ export default function MultiDeliveryNavigation() {
                         
                         {stops.map((stop, idx) => {
                             const delivery = deliveries.find(d => d.id === stop.deliveryId);
-                            
-                            // Lógica de atraso reativa
                             const startTime = stop.acceptedAt?.toDate?.()?.getTime() || stop.createdAt?.toDate?.()?.getTime();
                             const isDelayed = startTime && ((now - startTime) / (1000 * 60) > timeLimitMin);
 
@@ -339,7 +334,6 @@ export default function MultiDeliveryNavigation() {
                 </div>
             </div>
 
-            {/* Modal de confirmação de pagamento do cliente */}
             <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
                 setIsPaymentDialogOpen(open);
                 if (!open) {
@@ -388,7 +382,7 @@ export default function MultiDeliveryNavigation() {
                         <div className="flex flex-col items-center py-6">
                             <div className="p-4 bg-white rounded-2xl shadow-inner border relative">
                                 <Image 
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=LucasExpresso-Pedido-${taskToFinish?.id}`}
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DuExpress-Pedido-${taskToFinish?.id}`}
                                     alt="QR Code Pix"
                                     width={200}
                                     height={200}

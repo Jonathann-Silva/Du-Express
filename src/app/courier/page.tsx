@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -233,11 +232,11 @@ export default function CourierDashboard() {
                   <ShieldCheck className={cn("size-4", isAdminOnline ? "text-primary" : "text-muted-foreground")} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Logística Lucas-Expresso</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Logística Du Express</p>
                   <p className="text-xs font-bold mt-0.5">Admin Central</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 bg-background px-2.5 py-1 rounded-full border border-border shadow-sm">
+              <div className="flex items-center gap-1.5 bg-background px-3 py-1 rounded-full border border-border shadow-sm">
                 <span className={cn("size-1.5 rounded-full", isAdminOnline ? "bg-green-500 animate-pulse" : "bg-slate-400")}></span>
                 <span className={cn("text-[10px] font-black uppercase tracking-tighter", isAdminOnline ? "text-green-600" : "text-slate-500")}>
                   {statusLoading ? '...' : (isAdminOnline ? 'Admin Online' : 'Admin Offline')}
@@ -373,7 +372,7 @@ export default function CourierDashboard() {
               <div className="flex flex-col items-center py-6">
                   <div className="p-4 bg-white rounded-2xl shadow-inner border border-muted relative">
                       <Image 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=LucasExpresso-Pedido-${taskToFinish?.id}-Valor-${taskToFinish?.price}`}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DuExpress-Pedido-${taskToFinish?.id}-Valor-${taskToFinish?.price}`}
                         alt="QR Code Pix"
                         width={200}
                         height={200}
@@ -430,80 +429,5 @@ export default function CourierDashboard() {
         </DialogContent>
       </Dialog>
     </>
-  );
-}
-
-function TaskCard({ task, onAction, isUpdating, courierRate, timeLimit, now }: { task: Delivery, onAction: () => void, isUpdating: boolean, courierRate: number, timeLimit: number, now: number }) {
-  const isAccepted = task.status === 'accepted';
-  const isCollect = task.paymentMethod === 'collect';
-
-  // Lógica de cálculo de atraso reativa ao tempo real
-  const isDelayed = useMemo(() => {
-    // Tenta usar o horário de aceite, se não tiver (ex: tarefas legadas), usa o de criação
-    const startTime = task.acceptedAt?.toDate().getTime() || task.createdAt?.toDate().getTime();
-    if (!startTime) return false;
-    
-    const diffMin = (now - startTime) / (1000 * 60);
-    return diffMin > timeLimit;
-  }, [task.acceptedAt, task.createdAt, timeLimit, now]);
-
-  return (
-    <Card className={cn(
-        "p-4 rounded-xl shadow-sm border-l-4 overflow-hidden transition-all",
-        isDelayed ? "border-l-red-600 bg-red-50/30" : "border-l-primary"
-    )}>
-      <div className="flex justify-between items-start mb-4">
-        <Badge variant="secondary" className="uppercase text-[10px] font-bold">
-          {isAccepted ? 'Aguardando Coleta' : 'Em Trânsito'}
-        </Badge>
-        <div className="text-right">
-            <p className={cn("text-lg font-bold", isDelayed ? "text-red-600" : "text-primary")}>
-                {courierRate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </p>
-            {isDelayed && (
-                <div className="flex items-center gap-1 text-[10px] font-black text-red-600 uppercase animate-pulse">
-                    <Timer className="size-3" />
-                    ENTREGA EM ATRASO
-                </div>
-            )}
-        </div>
-      </div>
-
-      {isCollect && (
-        <div className="mb-4 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 flex items-center gap-2">
-            <Banknote className="size-4 text-amber-600" />
-            <p className="text-[10px] font-black text-amber-700 uppercase tracking-tighter">
-                COBRAR CLIENTE: DINHEIRO OU PIX
-            </p>
-        </div>
-      )}
-
-      <div className="space-y-3 mb-4">
-        <div className="flex gap-2 items-start">
-          <CircleDot className="size-4 text-primary mt-1 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase truncate">Loja: <ClientName clientId={task.clientId} /></p>
-            <p className="text-sm font-medium truncate">{task.pickup}</p>
-          </div>
-        </div>
-        <div className="flex gap-2 items-start">
-          <MapPin className="size-4 text-red-500 mt-1 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase">Destino:</p>
-            <p className="text-sm font-medium truncate">{task.dropoff}</p>
-          </div>
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" asChild className="flex-1 rounded-lg">
-          <Link href={`/courier/navigation`}>
-            <Map className="mr-2 size-4" /> Ver no Mapa
-          </Link>
-        </Button>
-        <Button size="sm" className={cn("flex-1 rounded-lg font-bold", isDelayed && "bg-red-600 hover:bg-red-700")} onClick={onAction} disabled={isUpdating}>
-          {isUpdating ? <Loader2 className="animate-spin" /> : (isAccepted ? 'Confirmar Retirada' : 'Finalizar Entrega')}
-        </Button>
-      </div>
-    </Card>
   );
 }

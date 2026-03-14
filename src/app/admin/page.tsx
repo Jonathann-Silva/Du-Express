@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -205,17 +204,17 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleUpdateStatus = async (delivery: Delivery, newStatus: DeliveryStatus) => {
+  const handleUpdateStatus = async (delivery: Delivery, nextStatus: DeliveryStatus) => {
     if (!firestore) return;
     setIsActionLoading(delivery.id);
     const deliveryRef = doc(firestore, 'deliveries', delivery.id);
     
     try {
       await updateDoc(deliveryRef, { 
-        status: newStatus,
-        ...(newStatus === 'finished' ? { finishedAt: serverTimestamp() } : {})
+        status: nextStatus,
+        ...(nextStatus === 'finished' ? { finishedAt: serverTimestamp() } : {})
       });
-      toast({ title: newStatus === 'in-progress' ? "Viagem Iniciada!" : "Entrega Finalizada!" });
+      toast({ title: nextStatus === 'in-progress' ? "Viagem Iniciada!" : "Entrega Finalizada!" });
     } catch (e) {
       toast({ title: "Erro ao atualizar", variant: "destructive" });
     } finally {
@@ -293,7 +292,7 @@ export default function AdminDashboard() {
             {adminPortrait && <Image alt="Admin Portrait" className="w-full h-full object-cover" src={adminPortrait.imageUrl} width={48} height={48} data-ai-hint={adminPortrait.imageHint} />}
           </div>
           <div>
-            <h1 className="text-xs font-medium text-muted-foreground">Devair Express</h1>
+            <h1 className="text-xs font-medium text-muted-foreground">Du Express</h1>
             <p className="text-lg font-bold text-foreground leading-none font-headline">Painel Admin</p>
           </div>
         </Link>
@@ -320,7 +319,6 @@ export default function AdminDashboard() {
             </Card>
           </Link>
           
-          {/* Botão para o Mapa de Rota GPS */}
           <Link href="/admin/route" className="col-span-2 block active:scale-[0.98] transition-transform">
             <Card className="rounded-2xl shadow-sm bg-primary text-primary-foreground border-none shadow-lg shadow-primary/20 hover:brightness-110 transition-all">
               <CardContent className="p-5 flex items-center justify-between">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -384,7 +383,7 @@ export default function AdminRouteNavigation() {
                         <div className="flex flex-col items-center py-6">
                             <div className="p-4 bg-white rounded-2xl shadow-inner border relative">
                                 <Image 
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DevairExpress-Pedido-${taskToFinish?.id}`}
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DuExpress-Pedido-${taskToFinish?.id}`}
                                     alt="QR Code Pix"
                                     width={200}
                                     height={200}

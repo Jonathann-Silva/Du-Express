@@ -155,7 +155,7 @@ export default function RequestDeliveryPage() {
       
       if (adminData?.pushSubscription) {
         await sendPushNotification(adminData.pushSubscription, {
-          title: 'Lucas Expresso',
+          title: 'Du Express',
           body: `📦 Novo Pedido: ${userProfile.displayName} solicitou entrega para ${dropoff}.`,
           url: '/admin'
         });
@@ -201,7 +201,7 @@ export default function RequestDeliveryPage() {
               <Timer className="size-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Compromisso Lucas-Expresso</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Compromisso Du Express</p>
               <p className="text-sm font-medium mt-1 leading-tight">
                 Nosso tempo de entrega é média de <span className="font-bold text-primary">{timeLimitDisplay} minutos</span>.
               </p>

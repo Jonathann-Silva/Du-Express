@@ -13,7 +13,6 @@ export async function sendPushNotification(subscriptionJson: string, payload: { 
   const privateKey = process.env.VAPID_PRIVATE_KEY;
 
   // Verifica se as chaves estão configuradas corretamente
-  // A chave privada deve ter cerca de 43 caracteres em base64 para resultar em 32 bytes decodificados
   if (!publicKey || !privateKey || privateKey.length < 30) {
     console.warn('VAPID keys não configuradas corretamente na Vercel ou .env. Notificação ignorada.');
     return { success: false, error: 'VAPID keys not configured' };
@@ -22,7 +21,7 @@ export async function sendPushNotification(subscriptionJson: string, payload: { 
   try {
     // Configura os detalhes VAPID apenas no momento do envio para evitar crash no boot
     webpush.setVapidDetails(
-      'mailto:suporte@lucasexpresso.com.br',
+      'mailto:suporte@duexpress.com.br',
       publicKey,
       privateKey
     );

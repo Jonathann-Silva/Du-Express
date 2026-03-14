@@ -1,7 +1,6 @@
-
 'use server';
 /**
- * @fileOverview Um chatbot com IA para suporte ao cliente no aplicativo de gerenciamento de entregas Lucas-Expresso.
+ * @fileOverview Um chatbot com IA para suporte ao cliente no aplicativo de gerenciamento de entregas Du Express.
  *
  * - clientSupportChatbot - Uma função que lida com perguntas de suporte do cliente.
  * - ClientSupportChatbotInput - O tipo de entrada para a função clientSupportChatbot.
@@ -31,7 +30,7 @@ const prompt = ai.definePrompt({
   name: 'clientSupportChatbotPrompt',
   input: {schema: ClientSupportChatbotInputSchema},
   output: {schema: ClientSupportChatbotOutputSchema},
-  prompt: `Você é um chatbot de suporte com tecnologia de IA para um aplicativo de gerenciamento de entregas chamado "Lucas-Expresso".
+  prompt: `Você é um chatbot de suporte com tecnologia de IA para um aplicativo de gerenciamento de entregas chamado "Du Express".
 Seu principal objetivo é ajudar os clientes com perguntas comuns relacionadas ao status da entrega, preços e políticas de serviço.
 Forneça respostas claras, concisas e úteis. Se você não puder responder a uma pergunta, declare educadamente que não pode ajudar com essa consulta específica e sugira entrar em contato com o suporte humano.
 

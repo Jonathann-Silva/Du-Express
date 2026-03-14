@@ -33,7 +33,6 @@ export default function ClientFinancePage() {
   const [isCashDialogOpen, setIsCashDialogOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // Cálculo do Ciclo Semanal (Seg-Sáb)
   const { weekStart, weekEnd, periodLabel } = useMemo(() => {
     const reference = new Date(currentDate);
     const day = getDay(reference);
@@ -41,7 +40,7 @@ export default function ClientFinancePage() {
     const start = startOfWeek(dateForCalc, { weekStartsOn: 1 });
     start.setHours(0, 0, 0, 0);
     
-    const end = addDays(start, 5); // Vai até Sábado
+    const end = addDays(start, 5); 
     end.setHours(23, 59, 59, 999);
     
     return { 
@@ -54,7 +53,6 @@ export default function ClientFinancePage() {
   const handlePrevWeek = () => setCurrentDate(prev => subWeeks(prev, 1));
   const handleNextWeek = () => setCurrentDate(prev => addWeeks(prev, 1));
 
-  // 1. Busca TODAS as entregas finalizadas para o cálculo de bloqueio
   const allDeliveriesQuery = useMemo(() => {
     if (!firestore || !user?.uid) return null;
     return query(
@@ -70,7 +68,6 @@ export default function ClientFinancePage() {
     return allFinishedDeliveries?.filter(d => d.paidByClient === false || d.paidByClient === undefined) || [];
   }, [allFinishedDeliveries]);
 
-  // 2. Busca as entregas da SEMANA SELECIONADA para exibição na lista
   const weeklyDeliveriesQuery = useMemo(() => {
     if (!firestore || !user?.uid) return null;
     return query(
@@ -88,7 +85,6 @@ export default function ClientFinancePage() {
 
   const blockStatus = useMemo(() => checkClientBlockStatus(unpaidDeliveries), [unpaidDeliveries]);
 
-  // Identifica os rótulos das semanas que possuem débitos pendentes
   const debtWeeksLabels = useMemo(() => {
     if (!unpaidDeliveries.length) return "";
     const weeksMap = new Map<number, string>();
@@ -111,14 +107,12 @@ export default function ClientFinancePage() {
     return sortedLabels.join(", ");
   }, [unpaidDeliveries]);
 
-  // Verifica se o período selecionado está vencido (Prazo: Quarta da semana seguinte)
   const isPeriodExpired = useMemo(() => {
     const deadline = addDays(weekStart, 9); 
     deadline.setHours(23, 59, 59, 999);
     return isBefore(deadline, new Date());
   }, [weekStart]);
 
-  // Cálculos baseados na semana selecionada
   const stats = useMemo(() => {
     if (!weeklyDeliveries) return { totalWeek: 0, paidWeek: 0, unpaidWeek: 0 };
     return weeklyDeliveries.reduce((acc, d) => {
@@ -141,7 +135,6 @@ export default function ClientFinancePage() {
     setTimeout(async () => {
         const batch = writeBatch(firestore);
         
-        // APENAS PIX: Liquidamos automaticamente (simulando integração instantânea)
         if (method === 'pix') {
             unpaidDeliveries.forEach(delivery => {
                 const dRef = doc(firestore, 'deliveries', delivery.id);
@@ -149,11 +142,10 @@ export default function ClientFinancePage() {
             });
         }
 
-        // Notificação interna para o Admin
         const notifRef = doc(collection(firestore, 'notifications'));
         batch.set(notifRef, {
             userId: 'admin', 
-            title: 'Lucas Expresso',
+            title: 'Du Express',
             description: method === 'pix' 
                 ? `💰 Pagamento PIX de ${totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} realizado por ${userProfile?.displayName}.`
                 : `💵 Solicitação de baixa em DINHEIRO de ${totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} por ${userProfile?.displayName}.`,
@@ -166,12 +158,11 @@ export default function ClientFinancePage() {
         try {
             await batch.commit();
 
-            // Notificação Push para o Admin
             const adminSnap = await getDocs(query(collection(firestore, 'users'), where('role', '==', 'admin'), limit(1)));
             const adminData = adminSnap.docs[0]?.data();
             if (adminData?.pushSubscription) {
                 await sendPushNotification(adminData.pushSubscription, {
-                    title: 'Lucas Expresso',
+                    title: 'Du Express',
                     body: method === 'pix' 
                         ? `💰 Pagamento PIX de ${userProfile?.displayName} recebido.`
                         : `💵 ${userProfile?.displayName} aguarda baixa em DINHEIRO.`,
@@ -224,7 +215,6 @@ export default function ClientFinancePage() {
       </header>
 
       <main className="flex-1 p-4 overflow-y-auto pb-32 outline-none">
-        
         <section className="mb-6">
             <Card className="p-2 bg-muted/50 border shadow-sm rounded-2xl flex items-center justify-between">
                 <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="rounded-xl h-12 w-12" disabled={isLoading}>
@@ -390,7 +380,7 @@ export default function ClientFinancePage() {
           <div className="flex flex-col items-center justify-center py-6">
             <div className="p-4 bg-white rounded-[2rem] shadow-inner border-2 border-dashed border-muted relative group">
               <Image 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=LucasExpresso-Pagamento-${totalDebt}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DuExpress-Pagamento-${totalDebt}`}
                 alt="QR Code PIX"
                 width={200}
                 height={200}

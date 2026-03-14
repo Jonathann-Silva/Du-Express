@@ -70,7 +70,6 @@ export default function ActiveDeliveryPage() {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
           const now = Date.now();
-          // Atualiza a posição local a cada 3 segundos para o mapa do entregador
           if (now - lastLocationUpdate.current < 3000) return;
           lastLocationUpdate.current = now;
           setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
@@ -116,7 +115,6 @@ export default function ActiveDeliveryPage() {
     }
   }, [delivery]);
 
-  // Lógica de Rotas Dinâmicas:
   const mapStops = useMemo(() => {
     if (!pickupCoords || !dropoffCoords || !delivery) return [];
     
@@ -423,7 +421,7 @@ export default function ActiveDeliveryPage() {
                 <div className="flex flex-col items-center py-6">
                     <div className="p-4 bg-white rounded-2xl shadow-inner border relative overflow-hidden">
                         <Image 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=LucasExpresso-Pedido-${delivery?.id}`}
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DuExpress-Pedido-${delivery?.id}`}
                             alt="QR Code Pix"
                             width={200}
                             height={200}

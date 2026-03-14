@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -256,7 +255,7 @@ export default function ClientHomePage() {
                   <ShieldCheck className={cn("size-4", isAdminOnline ? "text-primary" : "text-muted-foreground")} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Logística Devair Express</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Logística Du Express</p>
                   <p className="text-xs font-bold mt-0.5">Admin Central</p>
                 </div>
               </div>
@@ -299,7 +298,6 @@ export default function ClientHomePage() {
           </div>
         </section>
 
-        {/* Card de Atalho Financeiro */}
         <section className="px-6 py-2">
           <Link href="/client/finance">
             <Card className="bg-card border-none shadow-sm hover:bg-muted/50 transition-all active:scale-[0.98]">

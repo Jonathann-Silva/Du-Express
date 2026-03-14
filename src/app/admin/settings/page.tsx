@@ -7,7 +7,7 @@ import {
   ArrowLeft, 
   LogOut, 
   Palette, 
-  Image as ImageIcon, 
+  ImageIcon, 
   Gavel, 
   ChevronRight, 
   ShieldCheck, 
@@ -177,7 +177,7 @@ export default function AdminSettingsPage() {
         if (userData.pushSubscription) {
           pushPromises.push(
             sendPushNotification(userData.pushSubscription, {
-              title: 'Lucas Expresso',
+              title: 'Du Express',
               body: `📣 Aviso da Central: ${broadcastMessage}`,
               url: userData.role === 'client' ? '/client' : '/courier'
             })
@@ -376,6 +376,9 @@ export default function AdminSettingsPage() {
             </Button>
         </section>
       </main>
+      <p className="text-center text-[10px] text-muted-foreground/40 font-bold uppercase tracking-widest pb-10">
+          Du Express v0.0.9 • Configurações do Sistema
+      </p>
     </div>
   );
 }

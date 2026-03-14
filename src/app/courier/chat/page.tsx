@@ -49,7 +49,7 @@ export default function CourierChatPage() {
               recipientId="admin"
               recipientProfile={{
                 uid: 'admin',
-                displayName: 'Central de Operações',
+                displayName: 'Central de Operações Du Express',
                 role: 'admin',
                 createdAt: user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date()
               } as any}

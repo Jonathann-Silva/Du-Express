@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -172,7 +171,6 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
       <ScrollArea className="flex-1">
         <form onSubmit={handleCreate} className="p-6 space-y-6">
           
-          {/* Seleção do Cliente */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
               <Building className="size-3.5" /> Cliente (Loja)
@@ -191,7 +189,6 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
             </Select>
           </div>
 
-          {/* Forma de Pagamento */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
               Forma de Pagamento
@@ -214,7 +211,6 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
             </RadioGroup>
           </div>
 
-          {/* Endereços */}
           <div className="grid gap-4">
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
@@ -240,7 +236,6 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
             </div>
           </div>
 
-          {/* Preço e Atribuição */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
@@ -275,7 +270,6 @@ export function AdminCreateDeliveryDialog({ onClose }: AdminCreateDeliveryDialog
             </div>
           </div>
 
-          {/* Observações */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
               <Info className="size-3.5" /> Observações

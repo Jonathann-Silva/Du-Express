@@ -117,7 +117,7 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
       
       if (sub) {
         await sendPushNotification(sub, {
-          title: 'Lucas Expresso',
+          title: 'Du Express',
           body: `💬 ${senderName}: ${text}`,
           url: userProfile.role === 'admin' ? (recipientProfile?.role === 'client' ? '/client/chat' : '/courier/chat') : '/admin/chats'
         });

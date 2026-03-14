@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ArrowLeft, LogOut, User, Wallet, SlidersHorizontal, Lock, ChevronRight, Settings, Edit, Star, Loader2, Smartphone, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -207,7 +206,7 @@ export default function CourierProfilePage() {
                         <LogOut className="mr-2" />
                         Sair
                     </Button>
-                    <p className="text-center text-muted-foreground/60 text-xs mt-6">Versão do App 0.0.9 (teste) • Construído para Excelência do Entregador</p>
+                    <p className="text-center text-muted-foreground/60 text-xs mt-6">Versão do App 0.0.9 (teste) • Du Express • Central de Operações</p>
                 </section>
             </main>
         </>
