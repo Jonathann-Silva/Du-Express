@@ -50,7 +50,7 @@ export default function ClientHomePage() {
   const { data: appStatus, loading: statusLoading } = useDoc<AppStatus>(statusDocRef);
   const isAdminOnline = appStatus?.adminOnline;
 
-  // Busca regras de tempo limite
+  // Busca regras de tempo limite dinâmicas
   const rulesRef = useMemo(() => (
     firestore ? doc(firestore, 'settings', 'rules') : null
   ), [firestore]);

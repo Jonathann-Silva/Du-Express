@@ -34,7 +34,7 @@ export default function RequestDeliveryPage() {
   const [dropoffStreet, setDropoffStreet] = useState("");
   const [dropoffNumber, setDropoffNumber] = useState("");
 
-  // Busca o tempo médio de entrega definido pelo Admin
+  // Busca o tempo médio de entrega dinâmico definido pelo Admin
   const rulesRef = useMemo(() => (
     firestore ? doc(firestore, 'settings', 'rules') : null
   ), [firestore]);
@@ -195,7 +195,7 @@ export default function RequestDeliveryPage() {
       <main className="flex-1 overflow-y-auto pb-32 outline-none">
         <form onSubmit={handleRequest} className="px-4 py-6 space-y-8 max-w-md mx-auto">
           
-          {/* Alerta de Tempo Médio de Entrega */}
+          {/* Alerta de Tempo Médio de Entrega - Dinâmico */}
           <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
             <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Timer className="size-5 text-primary" />
