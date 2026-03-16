@@ -17,7 +17,7 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk',
 });
 
-// URL do novo ícone fornecido (com dl=1 para garantir acesso direto à imagem)
+// URL do novo ícone fornecido (com dl=1 para garantir acesso direto à imagem e evitar cache)
 const APP_ICON_URL = 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&dl=1';
 
 export const viewport: Viewport = {
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: APP_ICON_URL },
-      { url: `${APP_ICON_URL}&v=2`, sizes: '192x192', type: 'image/png' }
+      { url: `${APP_ICON_URL}&v=3`, sizes: '192x192', type: 'image/png' }
     ],
     shortcut: APP_ICON_URL,
     apple: [
@@ -68,7 +68,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <link href='https://unpkg.com/maplibre-gl/dist/maplibre-gl.css' rel='stylesheet' />
         <link rel="apple-touch-icon" href={APP_ICON_URL} />
-        {/* Meta tags extras para garantir que o iOS reconheça o nome e o ícone */}
+        {/* Meta tags explícitas para iOS */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Du Express" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
