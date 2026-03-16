@@ -17,7 +17,8 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk',
 });
 
-const APP_ICON_URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTtaP08iz-rJqKpD5XRwlvQotlrKLxFlYHXw&s';
+// Ícone atualizado para o branding Du Express
+const APP_ICON_URL = 'https://images.unsplash.com/photo-1624971679274-fbdd687389a6?auto=format&fit=crop&q=80&w=512&h=512';
 
 export const viewport: Viewport = {
   themeColor: '#13a4ec',
