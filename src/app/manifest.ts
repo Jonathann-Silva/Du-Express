@@ -1,8 +1,8 @@
 import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
-  // Usando a nova URL do ícone com dl=1 para download direto
-  const iconUrl = 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&dl=1';
+  // Usando raw=1 e cache buster para garantir que o sistema operacional baixe a versão nova
+  const iconUrl = 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&raw=1&v=15';
   
   return {
     name: 'Du Express',
