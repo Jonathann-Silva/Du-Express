@@ -65,6 +65,8 @@ export default function RootLayout({
         
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Du Express" />
+        <meta name="application-name" content="Du Express" />
       </head>
       <body className={cn(inter.variable, spaceGrotesk.variable, 'font-body antialiased')}>
         <FirebaseProvider>
