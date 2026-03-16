@@ -1,57 +1,54 @@
-/* eslint-disable no-restricted-globals */
+// Service Worker para Du Express - Gerenciamento de Notificações Push
+self.addEventListener('push', function (event) {
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      const options = {
+        body: data.body,
+        icon: 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&raw=1',
+        badge: 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&raw=1',
+        vibrate: [200, 100, 200],
+        tag: 'du-express-notification',
+        renotify: true,
+        data: {
+          url: data.url || '/'
+        }
+      };
 
-// Service Worker para Lucas Expresso
-// Responsável por garantir que o app possa ser atualizado e tenha capacidades offline básicas.
+      event.waitUntil(
+        self.registration.showNotification(data.title || 'Du Express', options)
+      );
+    } catch (e) {
+      console.error('Erro ao processar evento de push:', e);
+    }
+  }
+});
 
-const CACHE_NAME = 'lucas-expresso-cache-v1';
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+  const urlToOpen = new URL(event.notification.data.url, self.location.origin).href;
 
-// Ativa o novo service worker imediatamente após a instalação
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Se já houver uma aba aberta com essa URL, foca nela
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Se não, abre uma nova janela
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Assume o controle de todas as abas abertas imediatamente
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
-
-// Estratégia de busca: Network First
-// Tenta buscar na rede primeiro, se falhar (offline), tenta o cache.
-// Isso garante que o usuário sempre veja a versão mais recente quando online.
-self.addEventListener('fetch', (event) => {
-  // Ignora requisições de API, Firebase e WebSockets (GPS)
-  if (
-    event.request.url.includes('firestore.googleapis.com') ||
-    event.request.url.includes('firebasestorage.googleapis.com') ||
-    event.request.url.includes('identitytoolkit.googleapis.com') ||
-    event.request.url.includes('socket.io')
-  ) {
-    return;
-  }
-
-  // Estratégia Network First
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Se a resposta for válida, clonamos e guardamos no cache apenas requisições GET
-        if (event.request.method === 'GET' && response && response.status === 200 && response.type === 'basic') {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // Se a rede falhar, tenta o cache
-        return caches.match(event.request);
-      })
-  );
-});
-
-// Escuta mensagens do componente React (PWAUpdater)
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  event.waitUntil(clients.claim());
 });

@@ -215,7 +215,7 @@ export default function ClientSettingsPage() {
         );
     }
 
-    const isDeviceRegistered = !!userProfile?.fcmToken;
+    const isDeviceRegistered = !!userProfile?.pushSubscription;
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -317,7 +317,7 @@ export default function ClientSettingsPage() {
                         </div>
                         <div className="flex-1">
                             <p className="text-sm font-bold leading-none">
-                                {isDeviceRegistered ? "Notificações Ativas" : "Registro Pendente"}
+                                {isDeviceRegistered ? "Webpush Ativo" : "Registro Pendente"}
                             </p>
                             <p className="text-[10px] opacity-80 mt-1 font-medium">
                                 {isDeviceRegistered 

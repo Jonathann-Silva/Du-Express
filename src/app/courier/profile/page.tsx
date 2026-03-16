@@ -92,7 +92,7 @@ export default function CourierProfilePage() {
         { href: "/courier/profile/security", icon: Lock, title: "Segurança", description: "Senha e acesso biométrico" },
     ];
 
-    const isDeviceRegistered = !!userProfile?.fcmToken;
+    const isDeviceRegistered = !!userProfile?.pushSubscription;
 
     return (
         <>

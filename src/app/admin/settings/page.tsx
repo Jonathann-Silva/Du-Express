@@ -6,16 +6,8 @@ import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, 
   LogOut, 
-  Palette, 
-  ImageIcon, 
   Gavel, 
   ChevronRight, 
-  ShieldCheck, 
-  Lock, 
-  Fingerprint, 
-  Bell, 
-  Mail, 
-  BellRing,
   Loader2,
   Megaphone,
   Send,
@@ -57,14 +49,6 @@ export default function AdminSettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
-  const [newFinancePassword, setNewFinancePassword] = useState('');
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-
-  const [isSecurityVerified, setIsSecurityVerified] = useState(false);
-  const [verifyPasswordInput, setVerifyPasswordInput] = useState('');
-  const [verifyError, setVerifyError] = useState(false);
-
   const [isTimeLimitModalOpen, setIsTimeLimitModalOpen] = useState(false);
   const [newTimeLimit, setNewTimeLimit] = useState(45);
   const [isUpdatingRules, setIsUpdatingRules] = useState(false);
@@ -73,12 +57,6 @@ export default function AdminSettingsPage() {
   const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
 
   const isAuthorizedAdmin = !!adminUser && adminUser.role === 'admin';
-
-  const settingRef = useMemo(() => (
-    firestore && isAuthorizedAdmin ? doc(firestore, 'settings', 'finance') : null
-  ), [firestore, isAuthorizedAdmin]);
-  
-  const { data: financeSetting } = useDoc<{ password?: string }>(settingRef);
 
   const rulesRef = useMemo(() => (
     firestore && isAuthorizedAdmin ? doc(firestore, 'settings', 'rules') : null
@@ -91,37 +69,6 @@ export default function AdminSettingsPage() {
       setNewTimeLimit(rulesSetting.deliveryTimeLimit);
     }
   }, [rulesSetting]);
-
-  const handleUpdateFinancePassword = async () => {
-    if (!firestore || !newFinancePassword) return;
-    setIsUpdatingPassword(true);
-    try {
-      await setDoc(doc(firestore, 'settings', 'finance'), { 
-        password: newFinancePassword,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      toast({ title: "Senha Atualizada" });
-      setIsPasswordModalOpen(false);
-      setNewFinancePassword('');
-      setIsSecurityVerified(false);
-    } catch (error) {
-      toast({ title: "Erro ao atualizar", variant: "destructive" });
-    } finally {
-      setIsUpdatingPassword(false);
-    }
-  };
-
-  const handleVerifyAccess = () => {
-    const correctPassword = financeSetting?.password || 'admin123';
-    if (verifyPasswordInput === correctPassword) {
-      setIsSecurityVerified(true);
-      setVerifyError(false);
-    } else {
-      setVerifyError(true);
-      setVerifyPasswordInput('');
-      setTimeout(() => setVerifyError(false), 2000);
-    }
-  };
 
   const handleUpdateTimeLimit = async () => {
     if (!firestore || !rulesRef) return;
