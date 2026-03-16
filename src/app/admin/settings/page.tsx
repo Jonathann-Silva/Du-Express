@@ -15,14 +15,14 @@ import {
   Smartphone,
   CheckCircle2,
   AlertCircle,
-  BellRing
+  BellRing,
+  Key
 } from 'lucide-react';
 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
@@ -59,6 +59,9 @@ export default function AdminSettingsPage() {
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
 
+  // Verifica se a chave VAPID está configurada no sistema
+  const isVapidConfigured = !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
   const isAuthorizedAdmin = !!adminUser && adminUser.role === 'admin';
 
   const rulesRef = useMemo(() => (
@@ -92,12 +95,22 @@ export default function AdminSettingsPage() {
 
   const handleRegisterPush = async () => {
     if (!user?.uid) return;
+    
+    if (!isVapidConfigured) {
+      toast({ 
+        title: "Chave VAPID Ausente", 
+        description: "As chaves de notificação não foram configuradas no servidor (.env).", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     setIsRegistering(true);
     const success = await requestPermissionAndSaveToken(user.uid);
     if (success) {
-      toast({ title: "Dispositivo Conectado!", description: "Você agora receberá alertas push." });
+      toast({ title: "Dispositivo Conectado!", description: "Você agora receberá alertas push mesmo fora do app." });
     } else {
-      toast({ title: "Falha no Registro", description: "Verifique as permissões de notificação do seu navegador.", variant: "destructive" });
+      toast({ title: "Falha no Registro", description: "Verifique se você permitiu as notificações no navegador.", variant: "destructive" });
     }
     setIsRegistering(false);
   };
@@ -236,22 +249,31 @@ export default function AdminSettingsPage() {
               <div className="flex items-center gap-4">
                 <div className={cn(
                   "size-12 rounded-2xl flex items-center justify-center shadow-sm",
-                  isDeviceRegistered ? "bg-emerald-50 text-white" : "bg-amber-50 text-white"
+                  isDeviceRegistered ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
                 )}>
                   {isDeviceRegistered ? <CheckCircle2 className="size-6" /> : <AlertCircle className="size-6" />}
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-bold text-foreground">
-                    {isDeviceRegistered ? "Webpush Ativo" : "Dispositivo não Registrado"}
+                    {isDeviceRegistered ? "Notificações Ativas" : "Webpush Desconectado"}
                   </p>
                   <p className="text-xs text-muted-foreground leading-tight mt-0.5">
                     {isDeviceRegistered 
-                      ? "Este aparelho está pronto para receber notificações push mesmo com a tela bloqueada."
-                      : "Permita as notificações no seu navegador para receber alertas via Webpush."}
+                      ? "Este dispositivo está registrado para receber alertas push em tempo real."
+                      : "Para receber alertas, você deve configurar as chaves VAPID no ambiente e permitir notificações."}
                   </p>
                 </div>
               </div>
               
+              {!isVapidConfigured && (
+                <div className="p-3 bg-red-100 border border-red-200 rounded-lg flex items-start gap-2">
+                  <Key className="size-4 text-red-600 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-red-700 font-bold leading-tight">
+                    ERRO: Variável NEXT_PUBLIC_VAPID_PUBLIC_KEY não encontrada. As notificações não funcionarão sem ela.
+                  </p>
+                </div>
+              )}
+
               <Button 
                 variant={isDeviceRegistered ? "secondary" : "default"} 
                 className="w-full h-12 rounded-xl font-bold gap-2"
@@ -259,7 +281,7 @@ export default function AdminSettingsPage() {
                 disabled={isRegistering}
               >
                 {isRegistering ? <Loader2 className="animate-spin size-4" /> : <BellRing className="size-4" />}
-                {isDeviceRegistered ? "RECONECTAR APARELHO" : "ATIVAR NOTIFICAÇÕES NESTE CELULAR"}
+                {isDeviceRegistered ? "RECONECTAR DISPOSITIVO" : "ATIVAR NOTIFICAÇÕES NESTE CELULAR"}
               </Button>
             </div>
           </Card>
