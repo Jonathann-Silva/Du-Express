@@ -3,7 +3,6 @@ import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getApp } from 'firebase/app';
 
 // Chave VAPID pública para o Webpush
-// Deve ser configurada no arquivo .env como NEXT_PUBLIC_VAPID_PUBLIC_KEY
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -21,30 +20,34 @@ function urlBase64ToUint8Array(base64String: string) {
  * Solicita permissão e salva a assinatura de push no Firestore.
  */
 export const requestPermissionAndSaveToken = async (userId: string) => {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !userId) {
-    console.warn('Webpush: Ambiente não suportado (não é browser ou sem ID).');
+  if (typeof window === 'undefined') return false;
+
+  if (!('serviceWorker' in navigator)) {
+    console.warn('Webpush: Service Workers não são suportados neste navegador.');
+    return false;
+  }
+
+  if (!userId) {
+    console.warn('Webpush: Falha no registro - ID de usuário não fornecido.');
     return false;
   }
 
   if (!VAPID_PUBLIC_KEY) {
-    console.error('Webpush ERROR: NEXT_PUBLIC_VAPID_PUBLIC_KEY não configurada no .env');
+    console.warn('Webpush: NEXT_PUBLIC_VAPID_PUBLIC_KEY não configurada. O registro será ignorado.');
     return false;
   }
 
   try {
-    console.log('Webpush: Verificando permissões...');
+    console.log('Webpush: Iniciando processo de registro para:', userId);
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
-      // Registra/Recupera o Service Worker
       const registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/',
       });
       
       await navigator.serviceWorker.ready;
-      console.log('Webpush: Service Worker está pronto.');
-
-      // Inscreve o usuário no serviço de Push do navegador
+      
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
@@ -54,21 +57,20 @@ export const requestPermissionAndSaveToken = async (userId: string) => {
         const firestore = getFirestore(getApp());
         const userDocRef = doc(firestore, 'users', userId);
         
-        // Salva a assinatura como string no Firestore para o servidor usar depois
         await setDoc(userDocRef, { 
           pushSubscription: JSON.stringify(subscription),
           fcmToken: 'webpush_active',
           lastTokenUpdate: serverTimestamp(),
         }, { merge: true });
         
-        console.log('Webpush: Dispositivo registrado com sucesso para:', userId);
+        console.log('Webpush: Dispositivo registrado com sucesso no Firestore.');
         return true;
       }
     } else {
-      console.warn('Webpush: Permissão de notificação negada pelo usuário.');
+      console.warn('Webpush: Permissão negada pelo usuário.');
     }
   } catch (err) {
-    console.error('Webpush: Falha crítica no registro:', err);
+    console.error('Webpush: Erro crítico ao registrar assinatura:', err);
   }
   return false;
 };

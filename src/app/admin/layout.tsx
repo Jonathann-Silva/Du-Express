@@ -12,7 +12,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { user, userProfile } = useUser();
+  const { user, userProfile, loading } = useUser();
   const firestore = useFirestore();
   const { auth } = useAuth();
   const statusUpdateRef = useRef<boolean>(false);
@@ -47,7 +47,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [firestore, auth]);
 
   useEffect(() => {
-    if (user && userProfile?.role === 'admin') {
+    if (!loading && user && userProfile?.role === 'admin') {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
@@ -56,8 +56,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       if (!statusUpdateRef.current) {
         setAdminStatus(true);
         statusUpdateRef.current = true;
-        // Registra dispositivo para Webpush
-        requestPermissionAndSaveToken(user.uid);
+        // Só registra se tiver o UID garantido
+        if (user.uid) {
+          requestPermissionAndSaveToken(user.uid);
+        }
       }
 
       const handleUnload = () => {
@@ -67,14 +69,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       return () => {
         window.removeEventListener('beforeunload', handleUnload);
-        // Pequeno delay para evitar que refresh de página marque como offline
         timeoutRef.current = setTimeout(() => {
           setAdminStatus(false);
           statusUpdateRef.current = false;
         }, 10000);
       };
     }
-  }, [user?.uid, userProfile?.role, setAdminStatus]);
+  }, [loading, user?.uid, userProfile?.role, setAdminStatus]);
 
   return (
     <MobileLayout>
