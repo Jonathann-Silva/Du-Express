@@ -17,8 +17,8 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk',
 });
 
-// URL atualizada para forçar a quebra de cache no iOS/Android
-const APP_ICON_URL = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&q=80&w=512&h=512';
+// URL do novo ícone fornecido (com dl=1 para garantir acesso direto à imagem)
+const APP_ICON_URL = 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&dl=1';
 
 export const viewport: Viewport = {
   themeColor: '#13a4ec',
@@ -30,7 +30,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'Du Express',
-  description: 'Seu app de gerenciamento de entregas e logística.',
+  description: 'App de gerenciamento de entregas e logística.',
   applicationName: 'Du Express',
   appleWebApp: {
     capable: true,
@@ -41,9 +41,14 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: APP_ICON_URL,
+    icon: [
+      { url: APP_ICON_URL },
+      { url: `${APP_ICON_URL}&v=2`, sizes: '192x192', type: 'image/png' }
+    ],
     shortcut: APP_ICON_URL,
-    apple: APP_ICON_URL,
+    apple: [
+      { url: APP_ICON_URL, sizes: '180x180', type: 'image/png' },
+    ],
   },
 };
 
@@ -63,6 +68,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <link href='https://unpkg.com/maplibre-gl/dist/maplibre-gl.css' rel='stylesheet' />
         <link rel="apple-touch-icon" href={APP_ICON_URL} />
+        {/* Meta tags extras para garantir que o iOS reconheça o nome e o ícone */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Du Express" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body className={cn(inter.variable, spaceGrotesk.variable, 'font-body antialiased')}>
         <FirebaseProvider>

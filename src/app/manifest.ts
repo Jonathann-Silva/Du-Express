@@ -1,8 +1,8 @@
 import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
-  // Mesma URL do layout para manter consistência e evitar ícones diferentes
-  const iconUrl = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&q=80&w=512&h=512';
+  // Usando a nova URL do ícone com dl=1 para download direto
+  const iconUrl = 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&dl=1';
   
   return {
     name: 'Du Express',
