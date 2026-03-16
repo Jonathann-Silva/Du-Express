@@ -17,8 +17,8 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk',
 });
 
-// Ícone atualizado para o branding Du Express
-const APP_ICON_URL = 'https://images.unsplash.com/photo-1624971679274-fbdd687389a6?auto=format&fit=crop&q=80&w=512&h=512';
+// URL atualizada para forçar a quebra de cache no iOS/Android
+const APP_ICON_URL = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&q=80&w=512&h=512';
 
 export const viewport: Viewport = {
   themeColor: '#13a4ec',
@@ -30,7 +30,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'Du Express',
-  description: 'Seu app de gerenciamento de entregas.',
+  description: 'Seu app de gerenciamento de entregas e logística.',
+  applicationName: 'Du Express',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -62,11 +63,6 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <link href='https://unpkg.com/maplibre-gl/dist/maplibre-gl.css' rel='stylesheet' />
         <link rel="apple-touch-icon" href={APP_ICON_URL} />
-        
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Du Express" />
-        <meta name="application-name" content="Du Express" />
       </head>
       <body className={cn(inter.variable, spaceGrotesk.variable, 'font-body antialiased')}>
         <FirebaseProvider>

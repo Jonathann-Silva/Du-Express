@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
-  const iconUrl = 'https://images.unsplash.com/photo-1624971679274-fbdd687389a6?auto=format&fit=crop&q=80&w=512&h=512';
+  // Mesma URL do layout para manter consistência e evitar ícones diferentes
+  const iconUrl = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&q=80&w=512&h=512';
   
   return {
     name: 'Du Express',
@@ -16,7 +17,7 @@ export default function manifest(): MetadataRoute.Manifest {
         src: iconUrl,
         sizes: '192x192',
         type: 'image/png',
-        purpose: 'any',
+        purpose: 'maskable',
       },
       {
         src: iconUrl,
