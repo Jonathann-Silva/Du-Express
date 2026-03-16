@@ -14,7 +14,8 @@ import {
   Timer,
   Smartphone,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  BellRing
 } from 'lucide-react';
 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -41,9 +42,10 @@ import { doc, updateDoc, serverTimestamp, setDoc, collection, getDocs, writeBatc
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { sendPushNotification } from '@/services/push-notification';
+import { requestPermissionAndSaveToken } from '@/firebase/messaging';
 
 export default function AdminSettingsPage() {
-  const { userProfile: adminUser, loading: adminLoading } = useUser();
+  const { user, userProfile: adminUser, loading: adminLoading } = useUser();
   const { auth } = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
@@ -52,6 +54,7 @@ export default function AdminSettingsPage() {
   const [isTimeLimitModalOpen, setIsTimeLimitModalOpen] = useState(false);
   const [newTimeLimit, setNewTimeLimit] = useState(45);
   const [isUpdatingRules, setIsUpdatingRules] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
@@ -85,6 +88,18 @@ export default function AdminSettingsPage() {
     } finally {
       setIsUpdatingRules(false);
     }
+  };
+
+  const handleRegisterPush = async () => {
+    if (!user?.uid) return;
+    setIsRegistering(true);
+    const success = await requestPermissionAndSaveToken(user.uid);
+    if (success) {
+      toast({ title: "Dispositivo Conectado!", description: "Você agora receberá alertas push." });
+    } else {
+      toast({ title: "Falha no Registro", description: "Verifique as permissões de notificação do seu navegador.", variant: "destructive" });
+    }
+    setIsRegistering(false);
   };
 
   const handleToggleAutoCancel = async (checked: boolean) => {
@@ -217,23 +232,35 @@ export default function AdminSettingsPage() {
             "p-4 border shadow-sm transition-all",
             isDeviceRegistered ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"
           )}>
-            <div className="flex items-center gap-4">
-              <div className={cn(
-                "size-12 rounded-2xl flex items-center justify-center shadow-sm",
-                isDeviceRegistered ? "bg-emerald-50 text-white" : "bg-amber-50 text-white"
-              )}>
-                {isDeviceRegistered ? <CheckCircle2 className="size-6" /> : <AlertCircle className="size-6" />}
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "size-12 rounded-2xl flex items-center justify-center shadow-sm",
+                  isDeviceRegistered ? "bg-emerald-50 text-white" : "bg-amber-50 text-white"
+                )}>
+                  {isDeviceRegistered ? <CheckCircle2 className="size-6" /> : <AlertCircle className="size-6" />}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-foreground">
+                    {isDeviceRegistered ? "Webpush Ativo" : "Dispositivo não Registrado"}
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+                    {isDeviceRegistered 
+                      ? "Este aparelho está pronto para receber notificações push mesmo com a tela bloqueada."
+                      : "Permita as notificações no seu navegador para receber alertas via Webpush."}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-foreground">
-                  {isDeviceRegistered ? "Webpush Ativo" : "Dispositivo não Registrado"}
-                </p>
-                <p className="text-xs text-muted-foreground leading-tight mt-0.5">
-                  {isDeviceRegistered 
-                    ? "Este aparelho está pronto para receber notificações push mesmo com a tela bloqueada."
-                    : "Permita as notificações no seu navegador para receber alertas via Webpush."}
-                </p>
-              </div>
+              
+              <Button 
+                variant={isDeviceRegistered ? "secondary" : "default"} 
+                className="w-full h-12 rounded-xl font-bold gap-2"
+                onClick={handleRegisterPush}
+                disabled={isRegistering}
+              >
+                {isRegistering ? <Loader2 className="animate-spin size-4" /> : <BellRing className="size-4" />}
+                {isDeviceRegistered ? "RECONECTAR APARELHO" : "ATIVAR NOTIFICAÇÕES NESTE CELULAR"}
+              </Button>
             </div>
           </Card>
         </section>
