@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -90,7 +89,7 @@ export function AssignCourierDialog({ delivery, onAssign, onCancel }: { delivery
 
         if (selectedCourier.pushSubscription) {
           await sendPushNotification(selectedCourier.pushSubscription, {
-            title: 'Lucas Expresso',
+            title: 'Du Express',
             body: `🚀 Nova Entrega: Você foi escalado para coletar em ${delivery.pickup}.`,
             url: '/courier'
           });

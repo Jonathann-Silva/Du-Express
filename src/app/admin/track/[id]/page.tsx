@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -113,7 +112,7 @@ export default function AdminTrackingPage() {
       <div className="h-full bg-background flex flex-col items-center justify-center p-6 text-center">
         <Loader2 className="size-12 text-primary animate-spin mb-4" />
         <h2 className="text-xl font-bold font-headline">Buscando sinal do GPS...</h2>
-        <p className="text-muted-foreground text-sm mt-2">Conectando à frota via VPS Lucas-Expresso.</p>
+        <p className="text-muted-foreground text-sm mt-2">Conectando à frota via VPS Du Express.</p>
       </div>
     );
   }
