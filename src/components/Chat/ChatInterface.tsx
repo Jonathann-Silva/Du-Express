@@ -80,7 +80,7 @@ export function ChatInterface({ chatId, recipientId, recipientProfile }: ChatInt
     const messagesRef = collection(firestore, 'chats', chatId, 'messages');
     const notifRef = collection(firestore, 'notifications');
 
-    const senderName = userProfile.displayName || (userProfile.role === 'admin' ? 'Admin' : 'Usuário');
+    const senderName = userProfile.displayName || (userProfile.role === 'admin' ? 'Du Express' : 'Usuário');
 
     try {
       await addDoc(messagesRef, {

@@ -186,8 +186,8 @@ export default function AdminSettingsPage() {
                 <CardContent className="p-6 flex items-center gap-4">
                     {isLoading ? <Skeleton className="size-16 rounded-full" /> : (
                         <Avatar className="size-16 border-2 border-primary/20 shadow-sm">
-                            {adminUser?.photoURL && <AvatarImage src={adminUser.photoURL} alt={adminUser.displayName || 'Admin'} />}
-                            <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">{adminUser?.displayName?.charAt(0) || 'A'}</AvatarFallback>
+                            {adminUser?.photoURL && <AvatarImage src={adminUser.photoURL} alt={adminUser.displayName || 'Du Express'} />}
+                            <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">{adminUser?.displayName?.charAt(0) || 'D'}</AvatarFallback>
                         </Avatar>
                     )}
                     <div className="flex-1">
@@ -198,7 +198,7 @@ export default function AdminSettingsPage() {
                             </>
                         ) : (
                             <>
-                                <h2 className="text-lg font-bold leading-tight font-headline">{adminUser?.displayName}</h2>
+                                <h2 className="text-lg font-bold leading-tight font-headline">{adminUser?.displayName || 'Du Express'}</h2>
                                 <p className="text-xs text-muted-foreground">{adminUser?.email}</p>
                                 <Badge variant="outline" className="mt-2 text-[10px] uppercase font-black bg-background">Administrador Master</Badge>
                             </>
@@ -220,7 +220,7 @@ export default function AdminSettingsPage() {
             <div className="flex items-center gap-4">
               <div className={cn(
                 "size-12 rounded-2xl flex items-center justify-center shadow-sm",
-                isDeviceRegistered ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
+                isDeviceRegistered ? "bg-emerald-50 text-white" : "bg-amber-50 text-white"
               )}>
                 {isDeviceRegistered ? <CheckCircle2 className="size-6" /> : <AlertCircle className="size-6" />}
               </div>

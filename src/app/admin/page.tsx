@@ -293,7 +293,7 @@ export default function AdminDashboard() {
           </div>
           <div>
             <h1 className="text-xs font-medium text-muted-foreground">Du Express</h1>
-            <p className="text-lg font-bold text-foreground leading-none font-headline">Painel Admin</p>
+            <p className="text-lg font-bold text-foreground leading-none font-headline">Du Express</p>
           </div>
         </Link>
         <NotificationsPopover />
