@@ -39,6 +39,12 @@ const nextConfig: NextConfig = {
         hostname: 'unpkg.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.dropbox.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
