@@ -4,7 +4,7 @@ import webpush from 'web-push';
 
 /**
  * Envia uma notificação push real para um dispositivo assinado.
- * As chaves VAPID são lidas das variáveis de ambiente.
+ * Estrutura o payload para evitar que o navegador adicione prefixos como "from".
  */
 export async function sendPushNotification(subscriptionJson: string, payload: { title: string; body: string; url?: string }) {
   if (!subscriptionJson) return { success: false, error: 'No subscription provided' };
@@ -12,9 +12,8 @@ export async function sendPushNotification(subscriptionJson: string, payload: { 
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
 
-  // Verifica se as chaves estão configuradas corretamente no servidor
   if (!publicKey || !privateKey) {
-    console.error('ERRO CRÍTICO: Chaves VAPID não configuradas no servidor (.env).');
+    console.error('ERRO CRÍTICO: Chaves VAPID não configuradas no servidor.');
     return { success: false, error: 'VAPID keys not configured' };
   }
 
@@ -27,17 +26,19 @@ export async function sendPushNotification(subscriptionJson: string, payload: { 
 
     const subscription = JSON.parse(subscriptionJson);
     
-    // O payload deve ser uma string JSON que o Service Worker possa interpretar
+    // O payload é enviado como JSON puro para que o sw.js o processe corretamente
     const response = await webpush.sendNotification(
       subscription,
-      JSON.stringify(payload)
+      JSON.stringify({
+        title: payload.title,
+        body: payload.body,
+        url: payload.url
+      })
     );
     
-    console.log('Webpush enviado com sucesso para o dispositivo.');
     return { success: true, status: response.statusCode };
   } catch (error: any) {
     console.error('Erro ao enviar Webpush:', error.message);
-    // Se o erro for 410 (Gone) ou 404 (Not Found), a assinatura expirou ou é inválida
     return { success: false, error: error.message, statusCode: error.statusCode };
   }
 }

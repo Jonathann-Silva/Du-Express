@@ -1,69 +1,64 @@
-// Service Worker para Du Express
-// Este arquivo é essencial para processar notificações Push em segundo plano.
+/**
+ * Service Worker do Du Express
+ * Responsável por receber e exibir notificações push em segundo plano.
+ */
 
-self.addEventListener('install', (event) => {
-  console.log('SW: Instalado');
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  console.log('SW: Ativado');
-  event.waitUntil(self.clients.claim());
-});
-
-self.addEventListener('push', (event) => {
-  console.log('SW: Notificação Push recebida');
-  
-  let data = { 
-    title: 'Du Express', 
-    body: 'Você tem uma nova atualização.',
-    url: '/'
-  };
-
+self.addEventListener('push', function(event) {
   if (event.data) {
     try {
-      data = event.data.json();
+      // Tenta interpretar a mensagem como JSON
+      const data = event.data.json();
+      
+      const options = {
+        body: data.body,
+        icon: 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&raw=1',
+        badge: 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&raw=1',
+        vibrate: [100, 50, 100],
+        data: {
+          url: data.url || '/'
+        },
+        // Garante que a notificação substitua a anterior se for do mesmo tipo
+        tag: data.url ? data.url : 'default-tag'
+      };
+
+      event.waitUntil(
+        self.registration.showNotification(data.title || 'Du Express', options)
+      );
     } catch (e) {
-      data.body = event.data.text();
+      // Fallback caso a mensagem não seja JSON
+      event.waitUntil(
+        self.registration.showNotification('Du Express', {
+          body: event.data.text(),
+          icon: 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&raw=1'
+        })
+      );
     }
   }
-
-  const options = {
-    body: data.body,
-    icon: 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&raw=1',
-    badge: 'https://www.dropbox.com/scl/fi/j4dmyf2di1bmkgt0sba7l/2026-03-16-09-00-23.png?rlkey=zgeougxi0yha49jg3aejdxkes&st=124je16z&raw=1',
-    data: {
-      url: data.url || '/'
-    },
-    vibrate: [100, 50, 100],
-    actions: [
-      { action: 'open', title: 'Ver Agora' }
-    ]
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
 });
 
-self.addEventListener('notificationclick', (event) => {
+// Abre o aplicativo na página correta ao clicar na notificação
+self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-
-  const urlToOpen = event.notification.data.url || '/';
+  
+  const targetUrl = event.notification.data.url || '/';
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Se já houver uma aba aberta, foca nela e navega
-      for (var i = 0; i < windowClients.length; i++) {
-        var client = windowClients[i];
-        if (client.url === urlToOpen && 'focus' in client) {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // Se o app já estiver aberto, foca nele
+      for (const client of clientList) {
+        if (client.url.includes(targetUrl) && 'focus' in client) {
           return client.focus();
         }
       }
-      // Se não, abre uma nova
+      // Se não, abre uma nova janela
       if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
+        return clients.openWindow(targetUrl);
       }
     })
   );
+});
+
+// Força a atualização do Service Worker quando houver nova versão
+self.addEventListener('install', () => {
+  self.skipWaiting();
 });
