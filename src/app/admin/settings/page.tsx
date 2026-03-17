@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -43,6 +44,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { sendPushNotification } from '@/services/push-notification';
 import { requestPermissionAndSaveToken } from '@/firebase/messaging';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function AdminSettingsPage() {
   const { user, userProfile: adminUser, loading: adminLoading } = useUser();
@@ -50,6 +52,7 @@ export default function AdminSettingsPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const officialLogo = PlaceHolderImages.find(p => p.id === 'admin-portrait');
 
   const [isTimeLimitModalOpen, setIsTimeLimitModalOpen] = useState(false);
   const [newTimeLimit, setNewTimeLimit] = useState(45);
@@ -213,9 +216,9 @@ export default function AdminSettingsPage() {
             <Card className="overflow-hidden border-none shadow-md bg-primary/5">
                 <CardContent className="p-6 flex items-center gap-4">
                     {isLoading ? <Skeleton className="size-16 rounded-full" /> : (
-                        <Avatar className="size-16 border-2 border-primary/20 shadow-sm">
-                            {adminUser?.photoURL && <AvatarImage src={adminUser.photoURL} alt={adminUser.displayName || 'Du Express'} />}
-                            <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">{adminUser?.displayName?.charAt(0) || 'D'}</AvatarFallback>
+                        <Avatar className="size-16 border-2 border-primary/20 shadow-sm bg-white p-1">
+                            <AvatarImage src={officialLogo?.imageUrl} alt="Du Express" className="object-contain" />
+                            <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">D</AvatarFallback>
                         </Avatar>
                     )}
                     <div className="flex-1">

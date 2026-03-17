@@ -1,6 +1,8 @@
+
 'use client';
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { ArrowRight, Bike, Loader2, Mail, Lock, Calculator } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
@@ -9,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 function LoginContent() {
   const [email, setEmail] = useState('');
@@ -19,6 +22,7 @@ function LoginContent() {
   const { auth } = useAuth();
   const firestore = useFirestore();
   const searchParams = useSearchParams();
+  const officialLogo = PlaceHolderImages.find(p => p.id === 'admin-portrait');
 
   const handleLogin = async () => {
     if (!auth || !firestore) {
@@ -100,7 +104,9 @@ function LoginContent() {
   return (
     <div className="bg-background font-body text-foreground min-h-dvh flex flex-col justify-between">
       <header className="flex items-center justify-between p-6">
-        <Bike className="text-primary size-8" />
+        <div className="size-10 bg-white rounded-lg p-1 shadow-sm border flex items-center justify-center">
+            {officialLogo && <Image src={officialLogo.imageUrl} alt="Du Express Logo" width={40} height={40} className="object-contain" />}
+        </div>
       </header>
 
       <main className="flex-1 flex flex-col justify-center px-8 max-w-md mx-auto w-full">

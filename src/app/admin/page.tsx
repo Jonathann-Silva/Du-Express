@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -25,7 +26,7 @@ import type { Delivery, UserProfile, DeliveryStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NotificationsPopover } from '@/components/notifications';
-import { useUser, useCollection, useFirestore } from '@/firebase';
+import { useUser, useCollection, useFirestore, useDoc } from '@/firebase';
 import { collection, query, where, limit, doc, writeBatch, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { formatDistanceToNow, startOfDay, startOfWeek, addDays, subDays, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -288,11 +289,11 @@ export default function AdminDashboard() {
     <div className="flex flex-col h-full bg-background outline-none" tabIndex={-1}>
       <header className="flex items-center justify-between px-6 pt-6 pb-4 bg-background z-10 shrink-0">
         <Link href="/admin/settings" className="flex items-center gap-3 group">
-          <div className="size-12 overflow-hidden rounded-full border-2 border-primary/20 bg-primary/10 flex items-center justify-center group-hover:border-primary/50 transition-colors">
-            {adminPortrait && <Image alt="Admin Portrait" className="w-full h-full object-cover" src={adminPortrait.imageUrl} width={48} height={48} data-ai-hint={adminPortrait.imageHint} />}
+          <div className="size-12 overflow-hidden rounded-full border-2 border-primary/20 bg-white flex items-center justify-center group-hover:border-primary/50 transition-colors p-1 shadow-sm">
+            {adminPortrait && <Image alt="Du Express Logo" className="w-full h-full object-contain" src={adminPortrait.imageUrl} width={48} height={48} />}
           </div>
           <div>
-            <h1 className="text-xs font-medium text-muted-foreground">Du Express</h1>
+            <h1 className="text-xs font-medium text-muted-foreground uppercase tracking-tight">Painel Central</h1>
             <p className="text-lg font-bold text-foreground leading-none font-headline">Du Express</p>
           </div>
         </Link>

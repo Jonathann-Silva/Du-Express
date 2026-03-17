@@ -1,8 +1,10 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, Search, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,11 +17,13 @@ import { NotificationsPopover } from "@/components/notifications";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { FinanceGuard } from "@/components/FinanceGuard";
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function FinancialControlPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const { userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
+    const officialLogo = PlaceHolderImages.find(p => p.id === 'admin-portrait');
 
     const clientsQuery = useMemo(() => {
         if (!firestore || !userProfile || userProfile.role !== 'admin') return null;
@@ -76,8 +80,9 @@ export default function FinancialControlPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <NotificationsPopover />
-                    <Avatar className="size-9">
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">AD</AvatarFallback>
+                    <Avatar className="size-9 border-2 border-primary/20 bg-white p-0.5 shadow-sm">
+                        <AvatarImage src={officialLogo?.imageUrl} alt="Du Express" className="object-contain" />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">DE</AvatarFallback>
                     </Avatar>
                 </div>
             </header>
