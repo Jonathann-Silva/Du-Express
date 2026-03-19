@@ -1,8 +1,7 @@
-
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import Map, { Marker, Source, Layer, MapRef } from 'react-map-gl/maplibre';
-import { MapPin, Navigation, Store, Box, Square, Layers } from 'lucide-react';
+import { MapPin, Navigation, Store, Box, Square } from 'lucide-react';
 import { LngLatBounds } from 'maplibre-gl';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -143,7 +142,7 @@ export default function DeliveryMap({ stops = [], currentLocation, enable3D = tr
   };
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full overflow-hidden">
       <Map
         ref={mapRef}
         {...viewState}
@@ -222,18 +221,21 @@ export default function DeliveryMap({ stops = [], currentLocation, enable3D = tr
         )}
       </Map>
 
-      {/* Botão de Alternância de Perspectiva */}
-      <div className="absolute bottom-6 right-6 z-10 flex flex-col gap-2">
+      {/* Botão de Alternância de Perspectiva - Localizado no canto inferior direito */}
+      <div className="absolute bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-auto">
         <Button
           size="icon"
           variant="secondary"
           className={cn(
-            "size-12 rounded-2xl shadow-2xl border-2 transition-all active:scale-90",
+            "size-14 rounded-2xl shadow-2xl border-2 transition-all active:scale-90",
             is3DActive ? "bg-primary text-white border-primary/20" : "bg-white text-primary border-muted"
           )}
-          onClick={togglePerspective}
+          onClick={(e) => {
+            e.stopPropagation();
+            togglePerspective();
+          }}
         >
-          {is3DActive ? <Box size={24} /> : <Square size={24} />}
+          {is3DActive ? <Box size={28} /> : <Square size={28} />}
           <span className="sr-only">Alternar Perspectiva</span>
         </Button>
       </div>
