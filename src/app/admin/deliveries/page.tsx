@@ -220,6 +220,9 @@ function DeliveryCard({ delivery, onUpdateStatus, onSummaryClick, isActionLoadin
           <h3 className="text-lg font-bold mt-1 font-headline">
               <ClientName clientId={delivery.clientId} />
           </h3>
+          <p className="text-base font-black text-primary leading-none mt-1">
+            {delivery.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </p>
         </div>
         <Badge className={cn("text-[10px] font-bold uppercase gap-1", statusInfo.bgColor, statusInfo.color)}>
             {statusInfo.pulseColor && <span className={cn("size-1.5 rounded-full animate-pulse", statusInfo.pulseColor)}></span>}
