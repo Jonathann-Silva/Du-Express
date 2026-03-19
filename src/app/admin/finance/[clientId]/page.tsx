@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Download, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight, AlertCircle, Banknote, CreditCard, Smartphone, Wallet } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight, AlertCircle, Banknote, CreditCard, Smartphone, Wallet, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -15,7 +15,8 @@ import { format, startOfWeek, addDays, subDays, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { FinanceGuard } from "@/components/FinanceGuard";
 import { cn } from '@/lib/utils';
 
@@ -112,19 +113,96 @@ export default function ClientFinanceDetailsPage() {
     }
   };
 
-  const handleExportToExcel = () => {
-    if (!deliveries?.length) return;
-    const data = deliveries.map(d => ({
-        'Data': format(d.createdAt.toDate(), 'dd/MM/yyyy HH:mm'),
-        'Destino': d.dropoff,
-        'Valor': d.price,
-        'Pagamento': d.paymentMethod === 'credit' ? 'Crediário' : d.paymentMethod === 'pix' ? 'Pix' : 'Dinheiro',
-        'Status Loja': d.paidByClient ? 'Pago' : 'Pendente'
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Faturamento");
-    XLSX.writeFile(wb, `Faturamento_${client?.displayName || 'Loja'}.xlsx`);
+  const handleExportToPDF = () => {
+    if (!deliveries?.length || !client) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+
+    // Header principal
+    doc.setFontSize(20);
+    doc.setTextColor(63, 81, 181); // Indigo #3F51B5
+    doc.text('Du Express - Extrato Financeiro', 14, 20);
+    
+    doc.setFontSize(12);
+    doc.setTextColor(100);
+    doc.text(`Cliente: ${client.displayName}`, 14, 30);
+    doc.text(`Período: ${format(weekStart, "dd/MM/yyyy")} - ${format(weekEnd, "dd/MM/yyyy")}`, 14, 37);
+
+    let currentY = 45;
+
+    // Agrupamento por data
+    const grouped = deliveries.reduce((acc, d) => {
+        const dateKey = format(d.createdAt.toDate(), 'yyyy-MM-dd');
+        if (!acc[dateKey]) acc[dateKey] = [];
+        acc[dateKey].push(d);
+        return acc;
+    }, {} as Record<string, Delivery[]>);
+
+    const sortedDates = Object.keys(grouped).sort();
+
+    sortedDates.forEach((dateKey) => {
+        const dateDeliveries = grouped[dateKey];
+        const displayDate = format(new Date(dateKey + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR });
+        
+        // Verifica se precisa de nova página antes de começar o dia
+        if (currentY > 250) {
+            doc.addPage();
+            currentY = 20;
+        }
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0);
+        doc.text(displayDate.toUpperCase(), 14, currentY);
+        currentY += 5;
+
+        const tableData = dateDeliveries.map(d => [
+            format(d.createdAt.toDate(), 'HH:mm'),
+            d.dropoff,
+            d.paymentMethod === 'credit' ? 'Crediário' : d.paymentMethod === 'pix' ? 'Pix' : 'Dinheiro',
+            d.paidByClient ? 'Liquidado' : 'Pendente',
+            d.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        ]);
+
+        autoTable(doc, {
+            startY: currentY,
+            head: [['Horário', 'Destino', 'Pagamento', 'Status', 'Valor']],
+            body: tableData,
+            theme: 'striped',
+            headStyles: { fillColor: [63, 81, 181] },
+            margin: { left: 14, right: 14 },
+            styles: { fontSize: 8 }
+        });
+
+        // Atualiza currentY para a próxima tabela
+        currentY = (doc as any).lastAutoTable.finalY + 15;
+    });
+
+    // Resumo Final
+    if (currentY > 230) {
+        doc.addPage();
+        currentY = 20;
+    }
+
+    doc.setDrawColor(200);
+    doc.line(14, currentY, pageWidth - 14, currentY);
+    currentY += 10;
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RESUMO DO PERÍODO', 14, currentY);
+    currentY += 10;
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Faturamento Bruto: ${stats.totalWeek.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, currentY);
+    currentY += 7;
+    doc.text(`A Receber (Crediário): ${stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, currentY);
+    currentY += 7;
+    doc.text(`Recebido no Local (Pix/Dinheiro): ${stats.paidInPerson.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, currentY);
+
+    doc.save(`Extrato_${client.displayName}_${format(weekStart, "dd-MM-yyyy")}.pdf`);
   };
 
   const isLoading = userLoading || clientLoading || loading;
@@ -135,7 +213,7 @@ export default function ClientFinanceDetailsPage() {
         <div className="flex items-center justify-between mb-4">
           <Button variant="ghost" size="icon" asChild><Link href="/admin/finance"><ArrowLeft /></Link></Button>
           <h1 className="text-lg font-bold font-headline">Extrato da Loja</h1>
-          <Button variant="outline" size="sm" onClick={handleExportToExcel} disabled={!deliveries?.length} className="font-bold gap-2"><Download className="size-4" /> Excel</Button>
+          <Button variant="outline" size="sm" onClick={handleExportToPDF} disabled={!deliveries?.length} className="font-bold gap-2"><FileText className="size-4" /> PDF</Button>
         </div>
         <div className="flex items-center gap-4">
             {isLoading ? <Skeleton className="size-14 rounded-xl" /> : <Avatar className="size-14 rounded-xl border-2 border-primary/10"><AvatarImage src={client?.photoURL || ''} /><AvatarFallback className="bg-muted text-muted-foreground font-black">{client?.displayName?.charAt(0)}</AvatarFallback></Avatar>}
@@ -177,7 +255,7 @@ export default function ClientFinanceDetailsPage() {
                 <Card key={d.id} className={cn("p-4 rounded-xl border-l-4", d.paidByClient ? "border-l-emerald-500" : "border-l-amber-500")}>
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-lg bg-muted flex items-center justify-center">{paymentIconMap[d.paymentMethod]}</div>
+                            <div className="size-10 rounded-lg bg-muted flex items-center justify-center">{paymentIconMap[d.paymentMethod as keyof typeof paymentIconMap]}</div>
                             <div>
                                 <p className="font-bold text-sm truncate max-w-[150px]">{d.dropoff}</p>
                                 <div className="flex items-center gap-2 mt-0.5">
