@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCw, Sparkles, X } from 'lucide-react';
+import { RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -20,56 +19,61 @@ export function PWAUpdater() {
 
     const registerSW = async () => {
       try {
-        // Registra o Service Worker
+        // Registra o Service Worker (o arquivo sw.js deve estar em public/sw.js)
         const reg = await navigator.serviceWorker.register('/sw.js');
         setRegistration(reg);
 
-        // Verifica atualizações a cada 5 minutos
-        const interval = setInterval(() => {
-          reg.update();
-        }, 1000 * 60 * 5);
+        console.log('PWA: Service Worker registrado com sucesso.');
 
-        // Se já houver uma atualização esperando (em cache), mostra o aviso
+        // Se o navegador detectar que já existe um worker esperando (uma atualização antiga não aplicada)
         if (reg.waiting) {
+          console.log('PWA: Existe uma atualização aguardando ativação.');
           setShowUpdateBar(true);
         }
 
-        // Monitora novas atualizações que chegarem enquanto o app está aberto
+        // Monitora novas atualizações enquanto o app está aberto
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // Nova versão baixada e pronta para ser ativada
+                // Nova versão foi baixada e está pronta (installed)
+                console.log('PWA: Nova versão baixada e pronta para uso.');
                 setShowUpdateBar(true);
               }
             });
           }
         });
 
+        // Verifica manualmente por atualizações a cada 2 minutos
+        const interval = setInterval(() => {
+          reg.update();
+        }, 1000 * 60 * 2);
+
         return () => clearInterval(interval);
       } catch (err) {
-        console.error('Erro ao registrar Service Worker:', err);
+        console.error('PWA: Erro ao registrar Service Worker:', err);
       }
     };
 
     registerSW();
 
-    // Quando o novo Service Worker assume o controle, recarrega a página
+    // Evento disparado quando o novo SW assume o controle (após o skipWaiting)
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (refreshing) return;
       refreshing = true;
+      console.log('PWA: Novo Service Worker assumiu o controle. Recarregando...');
       window.location.reload();
     });
   }, []);
 
   const handleUpdate = () => {
     if (registration?.waiting) {
-      // Envia mensagem para o SW pular a espera e ativar imediatamente
+      // Envia mensagem para o Service Worker (sw.js) avisando para ignorar o tempo de espera
       registration.waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
-      // Fallback: força reload se algo falhar
+      // Fallback: força o reload manual se não houver worker esperando
       window.location.reload();
     }
   };
