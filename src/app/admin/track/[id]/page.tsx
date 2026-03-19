@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -47,8 +48,8 @@ export default function AdminTrackingPage() {
   const [dropoffCoords, setDropoffCoords] = useState<Coords | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(true);
   
-  // Estado para localização em tempo real via Socket (VPS)
-  const [socketLocation, setSocketLocation] = useState<{ lat: number, lng: number, updatedAt: number } | null>(null);
+  // Localização em tempo real via Socket (VPS) incluindo o heading
+  const [socketLocation, setSocketLocation] = useState<{ lat: number, lng: number, heading?: number, updatedAt: number } | null>(null);
 
   useEffect(() => {
     if (delivery) {
@@ -62,7 +63,7 @@ export default function AdminTrackingPage() {
           setPickupCoords(pCoords);
           setDropoffCoords(dCoords);
         } catch (error) {
-          console.error("Erro no geocodificador:", error);
+          console.error("Geocoding error:", error);
         } finally {
           setIsGeocoding(false);
         }
@@ -71,16 +72,12 @@ export default function AdminTrackingPage() {
     }
   }, [delivery]);
 
-  // --- ESCUTA GPS VIA VPS (SOCKET.IO) ---
   useEffect(() => {
     if (delivery?.courierId) {
       const socket = getSocket();
-      
-      // Ouve eventos específicos deste motoboy vindos da VPS
       socket.on(`location-${delivery.courierId}`, (data) => {
         setSocketLocation(data);
       });
-
       return () => {
         socket.off(`location-${delivery.courierId}`);
       };
@@ -95,109 +92,52 @@ export default function AdminTrackingPage() {
     ];
   }, [pickupCoords, dropoffCoords, delivery]);
 
-  // Prioriza a localização da VPS, se não houver, usa a última do Firestore (fallback)
   const courierLocation = useMemo(() => {
-    if (socketLocation) return { lat: socketLocation.lat, lng: socketLocation.lng };
+    if (socketLocation) return { lat: socketLocation.lat, lng: socketLocation.lng, heading: socketLocation.heading };
     return courier?.lastLocation ? { lat: courier.lastLocation.lat, lng: courier.lastLocation.lng } : null;
   }, [socketLocation, courier]);
 
-  const lastUpdateText = useMemo(() => {
-    if (socketLocation) return formatDistanceToNow(new Date(socketLocation.updatedAt), { addSuffix: true, locale: ptBR });
-    if (courier?.lastLocation) return formatDistanceToNow(courier.lastLocation.updatedAt.toDate(), { addSuffix: true, locale: ptBR });
-    return null;
-  }, [socketLocation, courier]);
-
   if (loadingDelivery || (delivery?.courierId && loadingCourier)) {
-    return (
-      <div className="h-full bg-background flex flex-col items-center justify-center p-6 text-center">
-        <Loader2 className="size-12 text-primary animate-spin mb-4" />
-        <h2 className="text-xl font-bold font-headline">Buscando sinal do GPS...</h2>
-        <p className="text-muted-foreground text-sm mt-2">Conectando à frota via VPS Du Express.</p>
-      </div>
-    );
-  }
-
-  if (!delivery) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center p-4 text-center">
-        <Package className="size-12 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-bold">Entrega não encontrada</h2>
-        <p className="text-muted-foreground mb-6">Esta solicitação pode ter sido finalizada ou cancelada.</p>
-        <Button asChild className="rounded-xl px-8"><Link href="/admin/deliveries">Voltar para Entregas</Link></Button>
-      </div>
-    );
+    return <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-primary size-10" /></div>;
   }
 
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
       <header className="absolute top-0 left-0 right-0 z-20 flex items-center bg-background/90 backdrop-blur-md p-4 justify-between border-b shadow-sm">
-        <Button variant="ghost" size="icon" className="rounded-full" onClick={() => router.back()}>
-          <ArrowLeft />
-        </Button>
-        <div className="text-center">
-          <h2 className="text-sm font-bold uppercase tracking-widest font-headline">Rastreador VPS Live</h2>
-        </div>
+        <Button variant="ghost" size="icon" className="rounded-full" onClick={() => router.back()}><ArrowLeft /></Button>
+        <div className="text-center"><h2 className="text-sm font-bold uppercase tracking-widest font-headline">Rastreador 3D Live</h2></div>
         <div className="size-10" />
       </header>
 
       <div className="absolute inset-0 z-0 bg-muted">
         {!isGeocoding && pickupCoords && dropoffCoords && (
-          <DeliveryMap stops={mapStops} currentLocation={courierLocation} />
-        )}
-        {isGeocoding && (
-            <div className="flex items-center justify-center h-full">
-                <Loader2 className="animate-spin text-muted-foreground" />
-            </div>
+          <DeliveryMap stops={mapStops} currentLocation={courierLocation} enable3D={true} />
         )}
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-background/80 to-transparent pb-10">
-        <Card className="rounded-3xl shadow-2xl border-t bg-card/95 backdrop-blur-md overflow-hidden">
-          <div className="p-5">
+        <Card className="rounded-3xl shadow-2xl bg-card/95 backdrop-blur-md p-5">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="text-lg font-bold font-headline leading-tight">
-                  <ClientName clientId={delivery.clientId} />
-                </h3>
-                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                  <MapPin className="size-3 text-red-500" /> {delivery.dropoff}
-                </p>
+                <h3 className="text-lg font-bold font-headline"><ClientName clientId={delivery!.clientId} /></h3>
+                <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="size-3 text-red-500" /> {delivery!.dropoff}</p>
               </div>
-              <Badge className={cn(
-                "uppercase text-[10px] font-bold tracking-tighter",
-                delivery.status === 'in-progress' ? "bg-emerald-500 text-white" : "bg-blue-500 text-white"
-              )}>
-                {delivery.status === 'in-progress' ? 'Em Trânsito' : 'Aguardando Coleta'}
+              <Badge className={cn("uppercase text-[10px] font-bold", delivery!.status === 'in-progress' ? "bg-emerald-500" : "bg-blue-500")}>
+                {delivery!.status === 'in-progress' ? 'Em Trânsito' : 'Aguardando Coleta'}
               </Badge>
             </div>
-
-            <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-2xl border border-border/50">
-              <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20 shrink-0">
+            <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-2xl border">
+              <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20">
                 <Bike className={cn("text-primary size-6", socketLocation && "animate-bounce")} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Entregador</p>
-                <h4 className="font-bold text-base truncate">{courier?.displayName || 'Aguardando Atribuição'}</h4>
-                <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                  {lastUpdateText ? (
-                    <>
-                      <NavIcon className={cn("size-2.5 text-primary", socketLocation && "animate-pulse")} />
-                      Sinal GPS {lastUpdateText} (via VPS)
-                    </>
-                  ) : (
-                    <span className="text-red-400 italic font-medium">
-                      {delivery.courierId ? 'Sem sinal de GPS no momento' : 'Nenhum entregador no pedido'}
-                    </span>
-                  )}
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Entregador</p>
+                <h4 className="font-bold text-base truncate">{courier?.displayName || '...'}</h4>
+                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  {socketLocation ? <><NavIcon className="size-2.5 text-primary" /> Sinal GPS via VPS</> : 'Sem sinal no momento'}
                 </p>
               </div>
-              {courier && (
-                <Button size="icon" variant="outline" className="rounded-full bg-primary/5 text-primary border-primary/20 shrink-0">
-                  <Phone className="size-4" />
-                </Button>
-              )}
             </div>
-          </div>
         </Card>
       </div>
     </div>

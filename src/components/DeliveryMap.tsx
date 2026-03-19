@@ -4,29 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Map, { Marker, Source, Layer, MapRef } from 'react-map-gl/maplibre';
 import { MapPin, Navigation, Store } from 'lucide-react';
 import { LngLatBounds } from 'maplibre-gl';
-import type { StyleSpecification } from 'maplibre-gl';
 
-// Usando tiles raster do OSM para economia total (gratuito e sem chave de API)
-const osmRasterStyle: StyleSpecification = {
-  version: 8,
-  sources: {
-    'osm-tiles': {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      attribution: '&copy; OpenStreetMap contributors',
-    },
-  },
-  layers: [
-    {
-      id: 'osm-tiles-layer',
-      type: 'raster',
-      source: 'osm-tiles',
-      minzoom: 0,
-      maxzoom: 19,
-    },
-  ],
-};
+// Estilo vetorial gratuito que suporta 3D
+const VECTOR_STYLE = 'https://tiles.openfreemap.org/styles/bright';
 
 export type MapStop = {
   lng: number;
@@ -38,25 +18,27 @@ export type MapStop = {
 
 interface DeliveryMapProps {
   stops?: MapStop[];
-  currentLocation?: { lng: number; lat: number } | null;
+  currentLocation?: { lng: number; lat: number; heading?: number | null } | null;
+  enable3D?: boolean;
 }
 
-export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMapProps) {
+export default function DeliveryMap({ stops = [], currentLocation, enable3D = true }: DeliveryMapProps) {
   const mapRef = useRef<MapRef>(null);
+  const [primaryColor, setPrimaryColor] = useState<string>('#3B82F6');
+  const [routeGeoJson, setRouteGeoJson] = useState<any>(null);
   const lastPointsRef = useRef<string>('');
-  
+
   // Padrão Arapongas, PR
   const defaultLng = -51.4236;
   const defaultLat = -23.4128;
 
   const [viewState, setViewState] = useState({
-    longitude: currentLocation?.lng || stops?.[0]?.lng || defaultLng,
-    latitude: currentLocation?.lat || stops?.[0]?.lat || defaultLat,
+    longitude: defaultLng,
+    latitude: defaultLat,
     zoom: 13,
+    pitch: 0,
+    bearing: 0,
   });
-  
-  const [routeGeoJson, setRouteGeoJson] = useState<any>(null);
-  const [primaryColor, setPrimaryColor] = useState<string>('#3B82F6');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -67,31 +49,50 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
     }
   }, []);
 
-  // Efeito para ajustar o mapa quando a localização atual ou as paradas mudarem
+  // Ajuste inicial para mostrar todos os pontos
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || stops.length === 0) return;
 
     const bounds = new LngLatBounds();
     let hasPoints = false;
-
-    if (currentLocation) {
-      bounds.extend([currentLocation.lng, currentLocation.lat]);
-      hasPoints = true;
-    }
 
     stops.forEach(stop => {
       bounds.extend([stop.lng, stop.lat]);
       hasPoints = true;
     });
 
+    if (currentLocation) {
+      bounds.extend([currentLocation.lng, currentLocation.lat]);
+      hasPoints = true;
+    }
+
     if (hasPoints) {
       mapRef.current.fitBounds(bounds, { padding: 60, duration: 1000, maxZoom: 15 });
     }
-  }, [currentLocation, stops]);
+  }, [stops.length]);
 
+  // Lógica de SEGUIR e ROTACIONAR (Estilo Navegador GPS)
+  useEffect(() => {
+    if (!currentLocation || !mapRef.current) return;
+
+    const map = mapRef.current.getMap();
+    
+    // O pitch (inclinação) cria o efeito 3D
+    // O bearing (rotação) segue a direção do movimento
+    map.easeTo({
+      center: [currentLocation.lng, currentLocation.lat],
+      zoom: 17.5,
+      pitch: enable3D ? 65 : 0,
+      bearing: currentLocation.heading || viewState.bearing || 0,
+      duration: 2000,
+      essential: true
+    });
+  }, [currentLocation?.lng, currentLocation?.lat, currentLocation?.heading]);
+
+  // Cálculo de Rota OSRM
   useEffect(() => {
     const fetchRoute = async () => {
-      if (!stops || stops.length < 1) {
+      if (stops.length < 1) {
         setRouteGeoJson(null);
         return;
       }
@@ -132,15 +133,41 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
       {...viewState}
       onMove={evt => setViewState(evt.viewState)}
       style={{ width: '100%', height: '100%' }}
-      mapStyle={osmRasterStyle}
+      mapStyle={VECTOR_STYLE}
       attributionControl={false}
+      antialias={true}
     >
+      {/* Camada de Prédios 3D */}
+      {enable3D && (
+        <Layer
+          id="3d-buildings"
+          type="fill-extrusion"
+          source="openmaptiles"
+          source-layer="building"
+          minzoom={15}
+          paint={{
+            'fill-extrusion-color': '#eee',
+            'fill-extrusion-height': [
+              'interpolate', ['linear'], ['zoom'],
+              15, 0,
+              15.05, ['get', 'render_height']
+            ],
+            'fill-extrusion-base': [
+              'interpolate', ['linear'], ['zoom'],
+              15, 0,
+              15.05, ['get', 'render_base_height']
+            ],
+            'fill-extrusion-opacity': 0.6
+          }}
+        />
+      )}
+
       {currentLocation && (
         <Marker longitude={currentLocation.lng} latitude={currentLocation.lat} anchor="center">
-          <div className="relative">
-            <div className="absolute -inset-2 bg-primary/20 rounded-full animate-ping" />
-            <div className="relative size-7 bg-primary rounded-full border-4 border-white shadow-xl flex items-center justify-center">
-              <Navigation className="size-3.5 text-white -rotate-45" fill="white" />
+          <div className="relative" style={{ transform: `rotate(${currentLocation.heading || 0}deg)` }}>
+            <div className="absolute -inset-4 bg-primary/20 rounded-full animate-pulse" />
+            <div className="relative size-10 bg-primary rounded-full border-4 border-white shadow-2xl flex items-center justify-center">
+              <Navigation className="size-5 text-white" fill="white" />
             </div>
           </div>
         </Marker>
@@ -149,16 +176,16 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
       {stops?.map((stop, index) => (
         <Marker key={`${stop.id}-${index}`} longitude={stop.lng} latitude={stop.lat} anchor="bottom">
           <div className="flex flex-col items-center group cursor-pointer">
-            <div className="bg-white px-2 py-1 rounded-md shadow-md text-[10px] font-bold mb-1 border opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            <div className="bg-white px-2 py-1 rounded-md shadow-md text-[10px] font-bold mb-1 border whitespace-nowrap">
               {stop.label}
             </div>
             {stop.type === 'pickup' ? (
-              <div className="bg-primary p-1.5 rounded-full shadow-lg border-2 border-white">
-                <Store className="size-4 text-white" />
+              <div className="bg-primary p-2 rounded-full shadow-lg border-2 border-white">
+                <Store className="size-5 text-white" />
               </div>
             ) : (
-              <div className="bg-red-500 p-1.5 rounded-full shadow-lg border-2 border-white">
-                <MapPin className="size-4 text-white" />
+              <div className="bg-red-500 p-2 rounded-full shadow-lg border-2 border-white">
+                <MapPin className="size-5 text-white" />
               </div>
             )}
           </div>
@@ -173,8 +200,8 @@ export default function DeliveryMap({ stops = [], currentLocation }: DeliveryMap
             layout={{ 'line-join': 'round', 'line-cap': 'round' }}
             paint={{
               'line-color': primaryColor,
-              'line-width': 5,
-              'line-opacity': 0.6
+              'line-width': 6,
+              'line-opacity': 0.8
             }}
           />
         </Source>

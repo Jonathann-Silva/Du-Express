@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -20,7 +21,6 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
       requestPermissionAndSaveToken(user.uid);
 
       // --- RASTREIO VIA VPS (SOCKET.IO) ---
-      // Economia Total: Zero escritas no Firebase para localização
       let watchId: number;
       const socket = getSocket();
       
@@ -28,21 +28,27 @@ export default function CourierLayout({ children }: { children: ReactNode }) {
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const now = Date.now();
-            // Com a VPS, atualizamos a cada 3 segundos para fluidez máxima sem custo
-            if (now - lastUpdateRef.current < 3000) return;
+            // Com a VPS, atualizamos a cada 2 segundos para fluidez total em 3D
+            if (now - lastUpdateRef.current < 2000) return;
             
             lastUpdateRef.current = now;
             
-            // Envia para a VPS via WebSocket
+            // Envia para a VPS via WebSocket incluindo o heading (direção)
             socket.emit('update-location', {
               courierId: user.uid,
               lat: pos.coords.latitude,
               lng: pos.coords.longitude,
+              heading: pos.coords.heading, // O ângulo de rotação do celular/veículo
+              speed: pos.coords.speed,
               updatedAt: now
             });
           },
           (err) => console.warn("GPS via VPS Error:", err),
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          { 
+            enableHighAccuracy: true, 
+            timeout: 10000, 
+            maximumAge: 0 
+          }
         );
       }
 
