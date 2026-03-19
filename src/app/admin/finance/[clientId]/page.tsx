@@ -1,15 +1,14 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Download, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight, AlertCircle, Banknote, CreditCard, Smartphone, Wallet, FileText } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, ChevronLeft, ChevronRight, Wallet, CreditCard, Smartphone, Banknote } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, useDoc } from '@/firebase';
-import { doc, collection, query, where, orderBy, getDocs, Timestamp, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy, getDocs, writeBatch, serverTimestamp } from 'firebase/firestore';
 import type { UserProfile, Delivery } from '@/lib/types';
 import { format, startOfWeek, addDays, subDays, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -23,7 +22,8 @@ import { cn } from '@/lib/utils';
 const paymentIconMap = {
     credit: <CreditCard className="size-3 text-primary" />,
     pix: <Smartphone className="size-3 text-[#32BCAD]" />,
-    cash: <Banknote className="size-3 text-emerald-500" />
+    cash: <Banknote className="size-3 text-emerald-500" />,
+    collect: <Banknote className="size-3 text-amber-500" />
 };
 
 export default function ClientFinanceDetailsPage() {
@@ -34,6 +34,11 @@ export default function ClientFinanceDetailsPage() {
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isSettling, setIsSettling] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const { weekStart, weekEnd } = useMemo(() => {
     const day = getDay(currentDate);
@@ -117,92 +122,94 @@ export default function ClientFinanceDetailsPage() {
     if (!deliveries?.length || !client) return;
 
     const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.width;
-
-    // Header principal
-    doc.setFontSize(20);
-    doc.setTextColor(63, 81, 181); // Indigo #3F51B5
-    doc.text('Du Express - Extrato Financeiro', 14, 20);
+    
+    // Configurações do Header
+    doc.setFontSize(18);
+    doc.setTextColor(19, 164, 236); // Cor azul do Du Express
+    doc.text(`Du Express - Extrato Financeiro`, 14, 20);
     
     doc.setFontSize(12);
-    doc.setTextColor(100);
+    doc.setTextColor(60);
     doc.text(`Cliente: ${client.displayName}`, 14, 30);
-    doc.text(`Período: ${format(weekStart, "dd/MM/yyyy")} - ${format(weekEnd, "dd/MM/yyyy")}`, 14, 37);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Período: ${format(weekStart, "dd/MM/yyyy")} a ${format(weekEnd, "dd/MM/yyyy")}`, 14, 37);
+    doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, 14, 42);
 
-    let currentY = 45;
-
-    // Agrupamento por data
+    // Agrupamento por Dia
     const grouped = deliveries.reduce((acc, d) => {
-        const dateKey = format(d.createdAt.toDate(), 'yyyy-MM-dd');
+        const dateKey = format(d.createdAt.toDate(), "eeee, dd 'de' MMMM", { locale: ptBR });
         if (!acc[dateKey]) acc[dateKey] = [];
         acc[dateKey].push(d);
         return acc;
     }, {} as Record<string, Delivery[]>);
 
-    const sortedDates = Object.keys(grouped).sort();
+    let finalY = 50;
 
-    sortedDates.forEach((dateKey) => {
-        const dateDeliveries = grouped[dateKey];
-        const displayDate = format(new Date(dateKey + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR });
-        
-        // Verifica se precisa de nova página antes de começar o dia
-        if (currentY > 250) {
+    Object.entries(grouped).sort((a, b) => {
+        // Ordenação cronológica simples baseada na primeira entrega do grupo
+        return a[1][0].createdAt.toDate().getTime() - b[1][0].createdAt.toDate().getTime();
+    }).forEach(([day, dayDeliveries]) => {
+        // Verifica se cabe na página (tabela + título do dia)
+        if (finalY > 240) {
             doc.addPage();
-            currentY = 20;
+            finalY = 20;
         }
 
-        doc.setFontSize(10);
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0);
-        doc.text(displayDate.toUpperCase(), 14, currentY);
-        currentY += 5;
-
-        const tableData = dateDeliveries.map(d => [
-            format(d.createdAt.toDate(), 'HH:mm'),
-            d.dropoff,
-            d.paymentMethod === 'credit' ? 'Crediário' : d.paymentMethod === 'pix' ? 'Pix' : 'Dinheiro',
-            d.paidByClient ? 'Liquidado' : 'Pendente',
-            d.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-        ]);
+        doc.text(day.toUpperCase(), 14, finalY);
+        finalY += 5;
 
         autoTable(doc, {
-            startY: currentY,
-            head: [['Horário', 'Destino', 'Pagamento', 'Status', 'Valor']],
-            body: tableData,
-            theme: 'striped',
-            headStyles: { fillColor: [63, 81, 181] },
-            margin: { left: 14, right: 14 },
-            styles: { fontSize: 8 }
+            startY: finalY,
+            head: [['Horário', 'Destino', 'Valor', 'Pagamento', 'Status']],
+            body: dayDeliveries.sort((a, b) => a.createdAt.toDate().getTime() - b.createdAt.toDate().getTime()).map(d => [
+                format(d.createdAt.toDate(), 'HH:mm'),
+                d.dropoff,
+                d.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                d.paymentMethod === 'credit' ? 'Crediário' : d.paymentMethod === 'pix' ? 'Pix' : 'Dinheiro',
+                d.paidByClient ? 'LIQUIDADO' : 'EM ABERTO'
+            ]),
+            styles: { fontSize: 8, cellPadding: 3 },
+            headStyles: { fillColor: [19, 164, 236], fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+            margin: { left: 14, right: 14 }
         });
 
-        // Atualiza currentY para a próxima tabela
-        currentY = (doc as any).lastAutoTable.finalY + 15;
+        finalY = (doc as any).lastAutoTable.finalY + 15;
     });
 
-    // Resumo Final
-    if (currentY > 230) {
+    // Totais no final
+    if (finalY > 230) {
         doc.addPage();
-        currentY = 20;
+        finalY = 20;
     }
-
-    doc.setDrawColor(200);
-    doc.line(14, currentY, pageWidth - 14, currentY);
-    currentY += 10;
-
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RESUMO DO PERÍODO', 14, currentY);
-    currentY += 10;
     
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Faturamento Bruto: ${stats.totalWeek.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, currentY);
-    currentY += 7;
-    doc.text(`A Receber (Crediário): ${stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, currentY);
-    currentY += 7;
-    doc.text(`Recebido no Local (Pix/Dinheiro): ${stats.paidInPerson.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, currentY);
+    doc.setDrawColor(200);
+    doc.line(14, finalY - 5, 196, finalY - 5);
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0);
+    doc.text("RESUMO DO PERÍODO", 14, finalY);
+    finalY += 10;
+    
+    autoTable(doc, {
+        startY: finalY,
+        body: [
+            ['Faturamento Total Bruto', stats.totalWeek.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
+            ['Total Pago no Local (Pix/Dinheiro)', stats.paidInPerson.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
+            ['Saldo Pendente para Acerto (Crediário)', stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })]
+        ],
+        theme: 'grid',
+        styles: { fontStyle: 'bold', fontSize: 10, cellPadding: 5 },
+        columnStyles: { 0: { cellWidth: 120 }, 1: { halign: 'right' } }
+    });
 
-    doc.save(`Extrato_${client.displayName}_${format(weekStart, "dd-MM-yyyy")}.pdf`);
+    doc.save(`Extrato_${client.displayName}_${format(weekStart, "dd-MM")}.pdf`);
   };
 
   const isLoading = userLoading || clientLoading || loading;
@@ -213,7 +220,9 @@ export default function ClientFinanceDetailsPage() {
         <div className="flex items-center justify-between mb-4">
           <Button variant="ghost" size="icon" asChild><Link href="/admin/finance"><ArrowLeft /></Link></Button>
           <h1 className="text-lg font-bold font-headline">Extrato da Loja</h1>
-          <Button variant="outline" size="sm" onClick={handleExportToPDF} disabled={!deliveries?.length} className="font-bold gap-2"><FileText className="size-4" /> PDF</Button>
+          <Button variant="outline" size="sm" onClick={handleExportToPDF} disabled={!deliveries?.length} className="font-bold gap-2">
+            <FileText className="size-4" /> PDF
+          </Button>
         </div>
         <div className="flex items-center gap-4">
             {isLoading ? <Skeleton className="size-14 rounded-xl" /> : <Avatar className="size-14 rounded-xl border-2 border-primary/10"><AvatarImage src={client?.photoURL || ''} /><AvatarFallback className="bg-muted text-muted-foreground font-black">{client?.displayName?.charAt(0)}</AvatarFallback></Avatar>}
@@ -222,20 +231,29 @@ export default function ClientFinanceDetailsPage() {
       </header>
 
       <main className="flex-1 p-4 pb-48">
-        <section className="mb-6"><Card className="p-3 bg-muted/50 border flex items-center justify-between"><Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 7))}><ChevronLeft className="size-5" /></Button><div className="text-center"><p className="text-sm font-bold">{format(weekStart, "dd/MM")} - {format(weekEnd, "dd/MM")}</p><p className="text-[10px] uppercase font-black text-primary tracking-widest leading-none mt-0.5">Semana Selecionada</p></div><Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 7))}><ChevronRight className="size-5" /></Button></Card></section>
+        <section className="mb-6">
+          <Card className="p-3 bg-muted/50 border flex items-center justify-between">
+            <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 7))}><ChevronLeft className="size-5" /></Button>
+            <div className="text-center">
+              <p className="text-sm font-bold">{mounted ? `${format(weekStart, "dd/MM")} - ${format(weekEnd, "dd/MM")}` : '---'}</p>
+              <p className="text-[10px] uppercase font-black text-primary tracking-widest leading-none mt-0.5">Semana Selecionada</p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 7))}><ChevronRight className="size-5" /></Button>
+          </Card>
+        </section>
 
         <section className="grid grid-cols-2 gap-3 mb-6">
             <Card className="p-4 bg-amber-500/10 border-amber-500/20">
                 <p className="text-[10px] font-black uppercase text-amber-600">A Receber (Crediário)</p>
-                <p className="text-xl font-black text-amber-500">{stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                <p className="text-xl font-black text-amber-500">{mounted ? stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '---'}</p>
             </Card>
             <Card className="p-4 bg-emerald-500/10 border-emerald-500/20">
                 <p className="text-[10px] font-black uppercase text-emerald-600">Recebido (Pix/Dinheiro)</p>
-                <p className="text-xl font-black text-emerald-500">{stats.paidInPerson.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                <p className="text-xl font-black text-emerald-500">{mounted ? stats.paidInPerson.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '---'}</p>
             </Card>
         </section>
 
-        {stats.debtClient > 0 && (
+        {mounted && stats.debtClient > 0 && (
             <div className="mb-8">
                 <Button 
                     className="w-full h-14 rounded-2xl font-black text-sm shadow-lg shadow-primary/20 gap-2"
@@ -251,11 +269,11 @@ export default function ClientFinanceDetailsPage() {
 
         <section className="space-y-3">
             <h3 className="text-xs font-black uppercase text-muted-foreground tracking-widest px-1">Registros da Semana</h3>
-            {isLoading ? <Skeleton className="h-32 w-full rounded-2xl" /> : deliveries?.map(d => (
+            {isLoading || !mounted ? <Skeleton className="h-32 w-full rounded-2xl" /> : deliveries?.map(d => (
                 <Card key={d.id} className={cn("p-4 rounded-xl border-l-4", d.paidByClient ? "border-l-emerald-500" : "border-l-amber-500")}>
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-lg bg-muted flex items-center justify-center">{paymentIconMap[d.paymentMethod as keyof typeof paymentIconMap]}</div>
+                            <div className="size-10 rounded-lg bg-muted flex items-center justify-center">{paymentIconMap[d.paymentMethod]}</div>
                             <div>
                                 <p className="font-bold text-sm truncate max-w-[150px]">{d.dropoff}</p>
                                 <div className="flex items-center gap-2 mt-0.5">
