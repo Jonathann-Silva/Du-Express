@@ -2,8 +2,10 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import Map, { Marker, Source, Layer, MapRef } from 'react-map-gl/maplibre';
-import { MapPin, Navigation, Store } from 'lucide-react';
+import { MapPin, Navigation, Store, Box, Square, Layers } from 'lucide-react';
 import { LngLatBounds } from 'maplibre-gl';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 // Estilo vetorial gratuito que suporta 3D
 const VECTOR_STYLE = 'https://tiles.openfreemap.org/styles/bright';
@@ -26,6 +28,7 @@ export default function DeliveryMap({ stops = [], currentLocation, enable3D = tr
   const mapRef = useRef<MapRef>(null);
   const [primaryColor, setPrimaryColor] = useState<string>('#3B82F6');
   const [routeGeoJson, setRouteGeoJson] = useState<any>(null);
+  const [is3DActive, setIs3DActive] = useState(enable3D);
   const lastPointsRef = useRef<string>('');
 
   // Padrão Arapongas, PR
@@ -36,7 +39,7 @@ export default function DeliveryMap({ stops = [], currentLocation, enable3D = tr
     longitude: defaultLng,
     latitude: defaultLat,
     zoom: 13,
-    pitch: 0,
+    pitch: enable3D ? 65 : 0,
     bearing: 0,
   });
 
@@ -77,17 +80,15 @@ export default function DeliveryMap({ stops = [], currentLocation, enable3D = tr
 
     const map = mapRef.current.getMap();
     
-    // O pitch (inclinação) cria o efeito 3D
-    // O bearing (rotação) segue a direção do movimento
     map.easeTo({
       center: [currentLocation.lng, currentLocation.lat],
-      zoom: 17.5,
-      pitch: enable3D ? 65 : 0,
+      zoom: is3DActive ? 17.5 : 16,
+      pitch: is3DActive ? 65 : 0,
       bearing: currentLocation.heading || viewState.bearing || 0,
       duration: 2000,
       essential: true
     });
-  }, [currentLocation?.lng, currentLocation?.lat, currentLocation?.heading]);
+  }, [currentLocation?.lng, currentLocation?.lat, currentLocation?.heading, is3DActive]);
 
   // Cálculo de Rota OSRM
   useEffect(() => {
@@ -127,18 +128,32 @@ export default function DeliveryMap({ stops = [], currentLocation, enable3D = tr
     fetchRoute();
   }, [stops, currentLocation]);
 
+  const togglePerspective = () => {
+    const next3D = !is3DActive;
+    setIs3DActive(next3D);
+    
+    if (mapRef.current) {
+      const map = mapRef.current.getMap();
+      map.easeTo({
+        pitch: next3D ? 65 : 0,
+        zoom: next3D ? 17.5 : 16,
+        duration: 1000
+      });
+    }
+  };
+
   return (
-    <Map
-      ref={mapRef}
-      {...viewState}
-      onMove={evt => setViewState(evt.viewState)}
-      style={{ width: '100%', height: '100%' }}
-      mapStyle={VECTOR_STYLE}
-      attributionControl={false}
-      antialias={true}
-    >
-      {/* Camada de Prédios 3D */}
-      {enable3D && (
+    <div className="relative w-full h-full">
+      <Map
+        ref={mapRef}
+        {...viewState}
+        onMove={evt => setViewState(evt.viewState)}
+        style={{ width: '100%', height: '100%' }}
+        mapStyle={VECTOR_STYLE}
+        attributionControl={false}
+        antialias={true}
+      >
+        {/* Camada de Prédios 3D */}
         <Layer
           id="3d-buildings"
           type="fill-extrusion"
@@ -157,55 +172,71 @@ export default function DeliveryMap({ stops = [], currentLocation, enable3D = tr
               15, 0,
               15.05, ['get', 'render_base_height']
             ],
-            'fill-extrusion-opacity': 0.6
+            'fill-extrusion-opacity': is3DActive ? 0.6 : 0
           }}
         />
-      )}
 
-      {currentLocation && (
-        <Marker longitude={currentLocation.lng} latitude={currentLocation.lat} anchor="center">
-          <div className="relative" style={{ transform: `rotate(${currentLocation.heading || 0}deg)` }}>
-            <div className="absolute -inset-4 bg-primary/20 rounded-full animate-pulse" />
-            <div className="relative size-10 bg-primary rounded-full border-4 border-white shadow-2xl flex items-center justify-center">
-              <Navigation className="size-5 text-white" fill="white" />
-            </div>
-          </div>
-        </Marker>
-      )}
-
-      {stops?.map((stop, index) => (
-        <Marker key={`${stop.id}-${index}`} longitude={stop.lng} latitude={stop.lat} anchor="bottom">
-          <div className="flex flex-col items-center group cursor-pointer">
-            <div className="bg-white px-2 py-1 rounded-md shadow-md text-[10px] font-bold mb-1 border whitespace-nowrap">
-              {stop.label}
-            </div>
-            {stop.type === 'pickup' ? (
-              <div className="bg-primary p-2 rounded-full shadow-lg border-2 border-white">
-                <Store className="size-5 text-white" />
+        {currentLocation && (
+          <Marker longitude={currentLocation.lng} latitude={currentLocation.lat} anchor="center">
+            <div className="relative" style={{ transform: `rotate(${currentLocation.heading || 0}deg)` }}>
+              <div className="absolute -inset-4 bg-primary/20 rounded-full animate-pulse" />
+              <div className="relative size-10 bg-primary rounded-full border-4 border-white shadow-2xl flex items-center justify-center">
+                <Navigation className="size-5 text-white" fill="white" />
               </div>
-            ) : (
-              <div className="bg-red-500 p-2 rounded-full shadow-lg border-2 border-white">
-                <MapPin className="size-5 text-white" />
-              </div>
-            )}
-          </div>
-        </Marker>
-      ))}
+            </div>
+          </Marker>
+        )}
 
-      {routeGeoJson && (
-        <Source id="route" type="geojson" data={routeGeoJson}>
-          <Layer
-            id="route"
-            type="line"
-            layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-            paint={{
-              'line-color': primaryColor,
-              'line-width': 6,
-              'line-opacity': 0.8
-            }}
-          />
-        </Source>
-      )}
-    </Map>
+        {stops?.map((stop, index) => (
+          <Marker key={`${stop.id}-${index}`} longitude={stop.lng} latitude={stop.lat} anchor="bottom">
+            <div className="flex flex-col items-center group cursor-pointer">
+              <div className="bg-white px-2 py-1 rounded-md shadow-md text-[10px] font-bold mb-1 border whitespace-nowrap">
+                {stop.label}
+              </div>
+              {stop.type === 'pickup' ? (
+                <div className="bg-primary p-2 rounded-full shadow-lg border-2 border-white">
+                  <Store className="size-5 text-white" />
+                </div>
+              ) : (
+                <div className="bg-red-500 p-2 rounded-full shadow-lg border-2 border-white">
+                  <MapPin className="size-5 text-white" />
+                </div>
+              )}
+            </div>
+          </Marker>
+        ))}
+
+        {routeGeoJson && (
+          <Source id="route" type="geojson" data={routeGeoJson}>
+            <Layer
+              id="route"
+              type="line"
+              layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+              paint={{
+                'line-color': primaryColor,
+                'line-width': 6,
+                'line-opacity': 0.8
+              }}
+            />
+          </Source>
+        )}
+      </Map>
+
+      {/* Botão de Alternância de Perspectiva */}
+      <div className="absolute bottom-6 right-6 z-10 flex flex-col gap-2">
+        <Button
+          size="icon"
+          variant="secondary"
+          className={cn(
+            "size-12 rounded-2xl shadow-2xl border-2 transition-all active:scale-90",
+            is3DActive ? "bg-primary text-white border-primary/20" : "bg-white text-primary border-muted"
+          )}
+          onClick={togglePerspective}
+        >
+          {is3DActive ? <Box size={24} /> : <Square size={24} />}
+          <span className="sr-only">Alternar Perspectiva</span>
+        </Button>
+      </div>
+    </div>
   );
 }
