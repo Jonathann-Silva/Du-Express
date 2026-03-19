@@ -76,13 +76,17 @@ export default function ClientFinanceDetailsPage() {
   const stats = useMemo(() => {
     if (!deliveries) return { totalWeek: 0, debtClient: 0, paidInPerson: 0, unpaidItems: [] };
     return deliveries.reduce((acc, d) => {
-        if (d.status === 'finished') {
-            acc.totalWeek += d.price;
+        // Agora incluímos todas as corridas exceto as recusadas, para que o saldo "em aberto" apareça
+        if (d.status !== 'refused') {
+            const priceValue = Number(d.price || 0);
+            acc.totalWeek += priceValue;
+            
             if (!d.paidByClient) {
-                acc.debtClient += d.price;
+                acc.debtClient += priceValue;
                 acc.unpaidItems.push(d);
             } else if (d.paymentMethod !== 'credit') {
-                acc.paidInPerson += d.price;
+                // Liquidado no local (Dinheiro/Pix direto ao motoboy)
+                acc.paidInPerson += priceValue;
             }
         }
         return acc;
@@ -137,8 +141,9 @@ export default function ClientFinanceDetailsPage() {
     doc.text(`Período: ${format(weekStart, "dd/MM/yyyy")} a ${format(weekEnd, "dd/MM/yyyy")}`, 14, 37);
     doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, 14, 42);
 
-    // Agrupamento por Dia
+    // Agrupamento por Dia (Exclui recusadas do PDF também)
     const grouped = deliveries.reduce((acc, d) => {
+        if (d.status === 'refused') return acc;
         const dateKey = format(d.createdAt.toDate(), "eeee, dd 'de' MMMM", { locale: ptBR });
         if (!acc[dateKey]) acc[dateKey] = [];
         acc[dateKey].push(d);
@@ -148,10 +153,9 @@ export default function ClientFinanceDetailsPage() {
     let finalY = 50;
 
     Object.entries(grouped).sort((a, b) => {
-        // Ordenação cronológica simples baseada na primeira entrega do grupo
         return a[1][0].createdAt.toDate().getTime() - b[1][0].createdAt.toDate().getTime();
     }).forEach(([day, dayDeliveries]) => {
-        // Verifica se cabe na página (tabela + título do dia)
+        // Verifica se cabe na página
         if (finalY > 240) {
             doc.addPage();
             finalY = 20;
