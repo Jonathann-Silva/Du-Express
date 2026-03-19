@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import Map, { Marker, Source, Layer, MapRef } from 'react-map-gl/maplibre';
@@ -221,13 +222,14 @@ export default function DeliveryMap({ stops = [], currentLocation, enable3D = tr
         )}
       </Map>
 
-      {/* Botão de Alternância de Perspectiva - Localizado no canto inferior direito */}
-      <div className="absolute bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-auto">
+      {/* Botão de Alternância de Perspectiva - Reposicionado para o topo à direita */}
+      {/* Isto garante que ele não seja coberto pelas janelas de informações que abrem de baixo para cima */}
+      <div className="absolute top-24 right-4 z-[9999] flex flex-col gap-2 pointer-events-auto">
         <Button
           size="icon"
           variant="secondary"
           className={cn(
-            "size-14 rounded-2xl shadow-2xl border-2 transition-all active:scale-90",
+            "size-14 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.3)] border-2 transition-all active:scale-90",
             is3DActive ? "bg-primary text-white border-primary/20" : "bg-white text-primary border-muted"
           )}
           onClick={(e) => {
