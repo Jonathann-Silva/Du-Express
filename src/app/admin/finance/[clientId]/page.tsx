@@ -18,6 +18,16 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { FinanceGuard } from "@/components/FinanceGuard";
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const paymentIconMap = {
     credit: <CreditCard className="size-3 text-primary" />,
@@ -35,6 +45,7 @@ export default function ClientFinanceDetailsPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isSettling, setIsSettling] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -261,7 +272,7 @@ export default function ClientFinanceDetailsPage() {
             <div className="mb-8">
                 <Button 
                     className="w-full h-14 rounded-2xl font-black text-sm shadow-lg shadow-primary/20 gap-2"
-                    onClick={handleManualSettle}
+                    onClick={() => setIsSettleDialogOpen(true)}
                     disabled={isSettling}
                 >
                     {isSettling ? <Loader2 className="animate-spin" /> : <Wallet className="size-5" />}
@@ -292,6 +303,28 @@ export default function ClientFinanceDetailsPage() {
             ))}
         </section>
       </main>
+
+      <AlertDialog open={isSettleDialogOpen} onOpenChange={setIsSettleDialogOpen}>
+        <AlertDialogContent className="rounded-3xl max-w-[90vw]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Baixa Manual?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está confirmando que recebeu o valor de {stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} da loja {client?.displayName}. Esta ação baixará todos os débitos pendentes desta semana.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col gap-2">
+            <AlertDialogAction 
+              onClick={handleManualSettle}
+              className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground"
+            >
+              Sim, Recebi o Valor
+            </AlertDialogAction>
+            <AlertDialogCancel className="w-full h-12 rounded-xl font-medium border-none bg-muted text-muted-foreground">
+              Cancelar
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </FinanceGuard>
   );
 }
