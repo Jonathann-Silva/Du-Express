@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ArrowRightLeft, Clock, MapPin, MoreHorizontal, Plus, Search, XCircle, Loader2 } from 'lucide-react';
+import { ArrowRightLeft, Clock, MapPin, MoreHorizontal, Plus, Search, XCircle, Loader2, ChevronRight } from 'lucide-react';
 import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, query, where, orderBy, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { format, isToday, isYesterday, compareDesc } from 'date-fns';
@@ -147,7 +147,17 @@ export default function AdminDeliveriesPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 pb-24">
+      <main className="flex-1 overflow-y-auto p-4 pb-32">
+        {/* Botão de Histórico Financeiro entre filtro e cards */}
+        <div className="mb-6">
+          <Button variant="outline" className="w-full h-14 rounded-2xl text-xs font-black border-primary/20 text-primary bg-primary/5 gap-2 group" asChild>
+            <Link href="/admin/finance/history">
+              VER HISTÓRICO FINANCEIRO COMPLETO
+              <ChevronRight className="size-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </Button>
+        </div>
+
         {isLoading && (
             <div className="space-y-4">
                 <Skeleton className="h-52 w-full rounded-xl" />
@@ -181,12 +191,6 @@ export default function AdminDeliveriesPage() {
             </div>
         )}
       </main>
-      
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/90 to-transparent pb-8 z-40 max-w-md mx-auto pointer-events-none">
-        <Button variant="outline" className="w-full py-7 rounded-2xl text-base font-bold shadow-2xl border-primary/20 text-primary pointer-events-auto bg-background" asChild>
-          <Link href="/admin/finance/history">VER HISTÓRICO FINANCEIRO COMPLETO</Link>
-        </Button>
-      </div>
 
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent className="max-w-md p-0 overflow-hidden rounded-3xl">
