@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { ArrowRightLeft, Clock, MapPin, MoreHorizontal, Plus, Search, XCircle, Loader2 } from 'lucide-react';
 import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, query, where, orderBy, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { formatDistanceToNow, format, isToday, isYesterday, compareDesc } from 'date-fns';
+import { format, isToday, isYesterday, compareDesc } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
 
@@ -182,6 +182,12 @@ export default function AdminDeliveriesPage() {
         )}
       </main>
       
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/90 to-transparent pb-8 z-40 max-w-md mx-auto pointer-events-none">
+        <Button variant="outline" className="w-full py-7 rounded-2xl text-base font-bold shadow-2xl border-primary/20 text-primary pointer-events-auto bg-background" asChild>
+          <Link href="/admin/finance/history">VER HISTÓRICO FINANCEIRO COMPLETO</Link>
+        </Button>
+      </div>
+
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent className="max-w-md p-0 overflow-hidden rounded-3xl">
             <AdminCreateDeliveryDialog onClose={() => setIsCreateModalOpen(false)} />
@@ -210,8 +216,8 @@ function DeliveryCard({ delivery, onUpdateStatus, onSummaryClick, isActionLoadin
   if (!statusInfo) return null;
   
   const requestedTime = delivery.createdAt
-    ? formatDistanceToNow(delivery.createdAt.toDate(), { addSuffix: true, locale: ptBR })
-    : 'agora';
+    ? format(delivery.createdAt.toDate(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+    : '---';
 
   return (
     <Card className="p-4 rounded-xl shadow-sm">
@@ -246,7 +252,7 @@ function DeliveryCard({ delivery, onUpdateStatus, onSummaryClick, isActionLoadin
                 <Clock className="text-muted-foreground size-4" />
             </div>
             <div className="flex-1">
-                <p className="text-xs text-muted-foreground font-medium leading-none">Solicitado</p>
+                <p className="text-xs text-muted-foreground font-medium leading-none">Solicitado em</p>
                 <p className="text-sm font-semibold">{requestedTime}</p>
             </div>
         </div>
