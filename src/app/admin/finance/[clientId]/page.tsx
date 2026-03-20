@@ -231,100 +231,102 @@ export default function ClientFinanceDetailsPage() {
 
   return (
     <FinanceGuard>
-      <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-md px-4 py-4 border-b">
-        <div className="flex items-center justify-between mb-4">
-          <Button variant="ghost" size="icon" asChild><Link href="/admin/finance"><ArrowLeft /></Link></Button>
-          <h1 className="text-lg font-bold font-headline">Extrato da Loja</h1>
-          <Button variant="outline" size="sm" onClick={handleExportToPDF} disabled={!deliveries?.length} className="font-bold gap-2">
-            <FileText className="size-4" /> PDF
-          </Button>
-        </div>
-        <div className="flex items-center gap-4">
-            {isLoading ? <Skeleton className="size-14 rounded-xl" /> : <Avatar className="size-14 rounded-xl border-2 border-primary/10"><AvatarImage src={client?.photoURL || ''} /><AvatarFallback className="bg-muted text-muted-foreground font-black">{client?.displayName?.charAt(0)}</AvatarFallback></Avatar>}
-            <div>{isLoading ? <Skeleton className="h-6 w-40" /> : <h2 className="text-lg font-bold">{client?.displayName}</h2>}<p className="text-[10px] uppercase font-bold text-muted-foreground">Logística Local Arapongas</p></div>
-        </div>
-      </header>
+      <div className="flex flex-col h-full bg-background outline-none">
+        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-md px-4 py-4 border-b shrink-0">
+          <div className="flex items-center justify-between mb-4">
+            <Button variant="ghost" size="icon" asChild><Link href="/admin/finance"><ArrowLeft /></Link></Button>
+            <h1 className="text-lg font-bold font-headline">Extrato da Loja</h1>
+            <Button variant="outline" size="sm" onClick={handleExportToPDF} disabled={!deliveries?.length} className="font-bold gap-2">
+              <FileText className="size-4" /> PDF
+            </Button>
+          </div>
+          <div className="flex items-center gap-4">
+              {isLoading ? <Skeleton className="size-14 rounded-xl" /> : <Avatar className="size-14 rounded-xl border-2 border-primary/10"><AvatarImage src={client?.photoURL || ''} /><AvatarFallback className="bg-muted text-muted-foreground font-black">{client?.displayName?.charAt(0)}</AvatarFallback></Avatar>}
+              <div>{isLoading ? <Skeleton className="h-6 w-40" /> : <h2 className="text-lg font-bold">{client?.displayName}</h2>}<p className="text-[10px] uppercase font-bold text-muted-foreground">Logística Local Arapongas</p></div>
+          </div>
+        </header>
 
-      <main className="flex-1 p-4 pb-48">
-        <section className="mb-6">
-          <Card className="p-3 bg-muted/50 border flex items-center justify-between">
-            <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 7))}><ChevronLeft className="size-5" /></Button>
-            <div className="text-center">
-              <p className="text-sm font-bold">{mounted ? `${format(weekStart, "dd/MM")} - ${format(weekEnd, "dd/MM")}` : '---'}</p>
-              <p className="text-[10px] uppercase font-black text-primary tracking-widest leading-none mt-0.5">Semana Selecionada</p>
-            </div>
-            <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 7))}><ChevronRight className="size-5" /></Button>
-          </Card>
-        </section>
-
-        <section className="grid grid-cols-2 gap-3 mb-6">
-            <Card className="p-4 bg-amber-500/10 border-amber-500/20">
-                <p className="text-[10px] font-black uppercase text-amber-600">A Receber (Crediário)</p>
-                <p className="text-xl font-black text-amber-500">{mounted ? stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '---'}</p>
+        <main className="flex-1 p-4 pb-48 overflow-y-auto">
+          <section className="mb-6">
+            <Card className="p-3 bg-muted/50 border flex items-center justify-between">
+              <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 7))}><ChevronLeft className="size-5" /></Button>
+              <div className="text-center">
+                <p className="text-sm font-bold">{mounted ? `${format(weekStart, "dd/MM")} - ${format(weekEnd, "dd/MM")}` : '---'}</p>
+                <p className="text-[10px] uppercase font-black text-primary tracking-widest leading-none mt-0.5">Semana Selecionada</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 7))}><ChevronRight className="size-5" /></Button>
             </Card>
-            <Card className="p-4 bg-emerald-500/10 border-emerald-500/20">
-                <p className="text-[10px] font-black uppercase text-emerald-600">Recebido (Pix/Dinheiro)</p>
-                <p className="text-xl font-black text-emerald-500">{mounted ? stats.paidInPerson.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '---'}</p>
-            </Card>
-        </section>
+          </section>
 
-        {mounted && stats.debtClient > 0 && (
-            <div className="mb-8">
-                <Button 
-                    className="w-full h-14 rounded-2xl font-black text-sm shadow-lg shadow-primary/20 gap-2"
-                    onClick={() => setIsSettleDialogOpen(true)}
-                    disabled={isSettling}
-                >
-                    {isSettling ? <Loader2 className="animate-spin" /> : <Wallet className="size-5" />}
-                    BAIXAR DÉBITOS MANUALMENTE ({stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
-                </Button>
-                <p className="text-[10px] text-center text-muted-foreground mt-2 italic">Use este botão se a loja já pagou por outro meio.</p>
-            </div>
-        )}
+          <section className="grid grid-cols-2 gap-3 mb-6">
+              <Card className="p-4 bg-amber-500/10 border-amber-500/20">
+                  <p className="text-[10px] font-black uppercase text-amber-600">A Receber (Crediário)</p>
+                  <p className="text-xl font-black text-amber-500">{mounted ? stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '---'}</p>
+              </Card>
+              <Card className="p-4 bg-emerald-500/10 border-emerald-500/20">
+                  <p className="text-[10px] font-black uppercase text-emerald-600">Recebido (Pix/Dinheiro)</p>
+                  <p className="text-xl font-black text-emerald-500">{mounted ? stats.paidInPerson.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '---'}</p>
+              </Card>
+          </section>
 
-        <section className="space-y-3">
-            <h3 className="text-xs font-black uppercase text-muted-foreground tracking-widest px-1">Registros da Semana</h3>
-            {isLoading || !mounted ? <Skeleton className="h-32 w-full rounded-2xl" /> : deliveries?.map(d => (
-                <Card key={d.id} className={cn("p-4 rounded-xl border-l-4", d.paidByClient ? "border-l-emerald-500" : "border-l-amber-500")}>
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-lg bg-muted flex items-center justify-center">{paymentIconMap[d.paymentMethod]}</div>
-                            <div>
-                                <p className="font-bold text-sm truncate max-w-[150px]">{d.dropoff}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[10px] font-bold text-muted-foreground">{format(d.createdAt.toDate(), "dd MMM, HH:mm", { locale: ptBR })}</span>
-                                    <span className={cn("text-[8px] font-black uppercase px-1 rounded", d.paidByClient ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>{d.paidByClient ? 'Liquidado' : 'Em Aberto'}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <p className="font-black text-base">{d.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                    </div>
-                </Card>
-            ))}
-        </section>
-      </main>
+          {mounted && stats.debtClient > 0 && (
+              <div className="mb-8">
+                  <Button 
+                      className="w-full h-14 rounded-2xl font-black text-sm shadow-lg shadow-primary/20 gap-2"
+                      onClick={() => setIsSettleDialogOpen(true)}
+                      disabled={isSettling}
+                  >
+                      {isSettling ? <Loader2 className="animate-spin" /> : <Wallet className="size-5" />}
+                      BAIXAR DÉBITOS MANUALMENTE ({stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                  </Button>
+                  <p className="text-[10px] text-center text-muted-foreground mt-2 italic">Use este botão se a loja já pagou por outro meio.</p>
+              </div>
+          )}
 
-      <AlertDialog open={isSettleDialogOpen} onOpenChange={setIsSettleDialogOpen}>
-        <AlertDialogContent className="rounded-3xl max-w-[90vw]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Baixa Manual?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Você está confirmando que recebeu o valor de {stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} da loja {client?.displayName}. Esta ação baixará todos os débitos pendentes desta semana.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-col gap-2">
-            <AlertDialogAction 
-              onClick={handleManualSettle}
-              className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground"
-            >
-              Sim, Recebi o Valor
-            </AlertDialogAction>
-            <AlertDialogCancel className="w-full h-12 rounded-xl font-medium border-none bg-muted text-muted-foreground">
-              Cancelar
-            </AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <section className="space-y-3">
+              <h3 className="text-xs font-black uppercase text-muted-foreground tracking-widest px-1">Registros da Semana</h3>
+              {isLoading || !mounted ? <Skeleton className="h-32 w-full rounded-2xl" /> : deliveries?.map(d => (
+                  <Card key={d.id} className={cn("p-4 rounded-xl border-l-4", d.paidByClient ? "border-l-emerald-500" : "border-l-amber-500")}>
+                      <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                              <div className="size-10 rounded-lg bg-muted flex items-center justify-center">{paymentIconMap[d.paymentMethod]}</div>
+                              <div>
+                                  <p className="font-bold text-sm truncate max-w-[150px]">{d.dropoff}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                      <span className="text-[10px] font-bold text-muted-foreground">{format(d.createdAt.toDate(), "dd MMM, HH:mm", { locale: ptBR })}</span>
+                                      <span className={cn("text-[8px] font-black uppercase px-1 rounded", d.paidByClient ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>{d.paidByClient ? 'Liquidado' : 'Em Aberto'}</span>
+                                  </div>
+                              </div>
+                          </div>
+                          <p className="font-black text-base">{d.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                      </div>
+                  </Card>
+              ))}
+          </section>
+        </main>
+
+        <AlertDialog open={isSettleDialogOpen} onOpenChange={setIsSettleDialogOpen}>
+          <AlertDialogContent className="rounded-3xl max-w-[90vw]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Baixa Manual?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Você está confirmando que recebeu o valor de {stats.debtClient.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} da loja {client?.displayName}. Esta ação baixará todos os débitos pendentes desta semana.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex flex-col gap-2">
+              <AlertDialogAction 
+                onClick={handleManualSettle}
+                className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground"
+              >
+                Sim, Recebi o Valor
+              </AlertDialogAction>
+              <AlertDialogCancel className="w-full h-12 rounded-xl font-medium border-none bg-muted text-muted-foreground">
+                Cancelar
+              </AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </FinanceGuard>
   );
 }
