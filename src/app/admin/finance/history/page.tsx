@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, TrendingUp, Calendar, ChevronRight, Calculator, Wallet, Loader2 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Calendar, ChevronRight, Calculator, Wallet, Loader2, MapPin, Building, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,14 +13,8 @@ import {
   startOfYear, 
   endOfYear, 
   eachMonthOfInterval, 
-  startOfMonth, 
-  endOfMonth, 
-  startOfWeek, 
-  addDays, 
   isSameMonth, 
-  isWithinInterval,
-  getDay,
-  subDays
+  compareDesc
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -31,6 +25,8 @@ import {
 } from '@/components/ui/accordion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FinanceGuard } from '@/components/FinanceGuard';
+import { ClientName } from '@/components/info/ClientName';
+import { cn } from '@/lib/utils';
 
 export default function FinancialHistoryPage() {
   const { userProfile, loading: userLoading } = useUser();
@@ -60,49 +56,25 @@ export default function FinancialHistoryPage() {
     return eachMonthOfInterval({
       start: yearRange.start,
       end: yearRange.end,
-    }).reverse();
+    }).reverse(); // Do mais recente para o mais antigo
   }, [yearRange]);
 
   const statsByMonth = useMemo(() => {
     if (!deliveries) return {};
 
-    const stats: Record<string, { total: number; weeks: { label: string; total: number }[] }> = {};
+    const stats: Record<string, { total: number; deliveries: Delivery[] }> = {};
 
     months.forEach(month => {
       const monthKey = format(month, 'yyyy-MM');
-      const monthDeliveries = deliveries.filter(d => isSameMonth(d.createdAt.toDate(), month));
-      const monthTotal = monthDeliveries.reduce((sum, d) => sum + d.price, 0);
-
-      // Agrupamento Semanal (Segunda a Sábado)
-      const weeks: { label: string; total: number }[] = [];
-      const mStart = startOfMonth(month);
-      const mEnd = endOfMonth(month);
-
-      let current = startOfWeek(mStart, { weekStartsOn: 1 });
-      while (current <= mEnd) {
-        const wStart = current;
-        const wEnd = addDays(current, 5); // Sábado
-        
-        const weekDeliveries = monthDeliveries.filter(d => {
-          const dDate = d.createdAt.toDate();
-          return isWithinInterval(dDate, { start: wStart, end: wEnd });
-        });
-
-        const weekTotal = weekDeliveries.reduce((sum, d) => sum + d.price, 0);
-        
-        if (weekTotal > 0 || isWithinInterval(new Date(), { start: wStart, end: wEnd })) {
-          weeks.push({
-            label: `${format(wStart, 'dd/MM')} - ${format(wEnd, 'dd/MM')}`,
-            total: weekTotal
-          });
-        }
-        
-        current = addDays(current, 7);
-      }
+      const monthDeliveries = deliveries
+        .filter(d => isSameMonth(d.createdAt.toDate(), month))
+        .sort((a, b) => compareDesc(a.createdAt.toDate(), b.createdAt.toDate()));
+      
+      const monthTotal = monthDeliveries.reduce((sum, d) => sum + (d.price || 0), 0);
 
       stats[monthKey] = {
         total: monthTotal,
-        weeks: weeks.reverse()
+        deliveries: monthDeliveries
       };
     });
 
@@ -117,7 +89,7 @@ export default function FinancialHistoryPage() {
 
   return (
     <FinanceGuard>
-      <div className="flex flex-col h-full bg-background">
+      <div className="flex flex-col h-full bg-background outline-none">
         <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md px-4 py-4 border-b">
           <div className="flex items-center gap-3 mb-4">
             <Button variant="ghost" size="icon" asChild>
@@ -131,7 +103,7 @@ export default function FinancialHistoryPage() {
           <Card className="bg-primary/5 border-primary/10 p-4 rounded-2xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black text-primary uppercase tracking-widest">Faturamento Bruto {selectedYear}</p>
+                <p className="text-[10px] font-black text-primary uppercase tracking-widest">Faturamento Total {selectedYear}</p>
                 <h2 className="text-3xl font-black text-foreground">
                   {isLoading ? <Skeleton className="h-8 w-32" /> : totalYear.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </h2>
@@ -147,47 +119,82 @@ export default function FinancialHistoryPage() {
           <div className="space-y-4">
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+                <Skeleton key={i} className="h-24 w-full rounded-2xl" />
               ))
             ) : (
-              <Accordion type="single" collapsible className="space-y-3">
+              <Accordion type="single" collapsible className="space-y-4">
                 {months.map(month => {
                   const key = format(month, 'yyyy-MM');
                   const data = statsByMonth[key];
-                  if (!data || data.total === 0) return null;
+                  const hasDeliveries = data && data.deliveries.length > 0;
 
                   return (
-                    <AccordionItem key={key} value={key} className="border rounded-2xl bg-card px-4 shadow-sm">
-                      <AccordionTrigger className="hover:no-underline py-5">
-                        <div className="flex items-center gap-4 w-full text-left">
-                          <div className="size-12 rounded-xl bg-muted flex flex-col items-center justify-center shrink-0">
-                            <span className="text-[10px] font-black uppercase text-muted-foreground">{format(month, 'MMM', { locale: ptBR })}</span>
-                            <span className="text-lg font-bold leading-none">{format(month, 'yy')}</span>
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="text-lg font-bold capitalize">{format(month, 'MMMM', { locale: ptBR })}</h3>
-                            <p className="text-xs text-muted-foreground font-medium">{data.weeks.length} semanas registradas</p>
+                    <AccordionItem key={key} value={key} className="border rounded-[2rem] bg-card overflow-hidden shadow-sm border-none">
+                      <AccordionTrigger className="hover:no-underline p-0">
+                        <div className={cn(
+                          "flex items-center justify-between w-full p-5 text-left transition-colors",
+                          hasDeliveries ? "bg-muted/30" : "bg-muted/10 opacity-60"
+                        )}>
+                          <div className="flex items-center gap-4">
+                            <div className="size-12 rounded-2xl bg-background border flex flex-col items-center justify-center shrink-0 shadow-sm">
+                              <span className="text-[10px] font-black uppercase text-primary">{format(month, 'MMM', { locale: ptBR })}</span>
+                              <span className="text-lg font-bold leading-none">{format(month, 'yy')}</span>
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-bold capitalize leading-none">{format(month, 'MMMM', { locale: ptBR })}</h3>
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                                {hasDeliveries ? `${data.deliveries.length} entregas` : 'Sem registros'}
+                              </p>
+                            </div>
                           </div>
                           <div className="text-right pr-2">
-                            <p className="text-base font-black text-primary">{data.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                            <p className="text-base font-black text-primary">
+                              {(data?.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
                           </div>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="pb-5 pt-2 border-t border-dashed">
-                        <div className="space-y-3">
-                          <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Detalhamento por Ciclo</h4>
-                          {data.weeks.map((week, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
-                              <div className="flex items-center gap-3">
-                                <Calendar className="size-4 text-muted-foreground" />
-                                <span className="text-sm font-bold">{week.label}</span>
+                      <AccordionContent className="p-0">
+                        {hasDeliveries ? (
+                          <div className="divide-y divide-dashed">
+                            {data.deliveries.map((delivery) => (
+                              <div key={delivery.id} className="p-4 hover:bg-muted/20 transition-colors">
+                                <div className="flex justify-between items-start mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                      <Building size={16} />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-bold leading-none">
+                                        <ClientName clientId={delivery.clientId} />
+                                      </p>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <Clock className="size-3 text-muted-foreground" />
+                                        <p className="text-[10px] font-medium text-muted-foreground">
+                                          {format(delivery.createdAt.toDate(), "dd 'de' MMM 'às' HH:mm", { locale: ptBR })}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm font-black text-foreground">
+                                    {delivery.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2 px-1">
+                                  <MapPin className="size-3 text-red-500 shrink-0" />
+                                  <p className="text-xs text-muted-foreground truncate">{delivery.dropoff}</p>
+                                </div>
                               </div>
-                              <span className="text-sm font-black text-foreground">
-                                {week.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-10 text-center">
+                            <Calendar className="size-10 text-muted-foreground/20 mx-auto mb-2" />
+                            <p className="text-xs font-bold text-muted-foreground/50 uppercase tracking-widest">
+                              Nenhuma entrega finalizada
+                            </p>
+                          </div>
+                        )}
                       </AccordionContent>
                     </AccordionItem>
                   );
