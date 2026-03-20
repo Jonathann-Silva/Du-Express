@@ -85,6 +85,14 @@ export default function FinancialHistoryPage() {
     return Object.values(statsByMonth).reduce((sum, m) => sum + m.total, 0);
   }, [statsByMonth]);
 
+  // Filtra apenas os meses que possuem entregas realizadas
+  const activeMonths = useMemo(() => {
+    return months.filter(month => {
+      const key = format(month, 'yyyy-MM');
+      return statsByMonth[key] && statsByMonth[key].deliveries.length > 0;
+    });
+  }, [months, statsByMonth]);
+
   const isLoading = userLoading || loadingDeliveries;
 
   return (
@@ -121,20 +129,16 @@ export default function FinancialHistoryPage() {
               Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-24 w-full rounded-2xl" />
               ))
-            ) : (
+            ) : activeMonths.length > 0 ? (
               <Accordion type="single" collapsible className="space-y-4">
-                {months.map(month => {
+                {activeMonths.map(month => {
                   const key = format(month, 'yyyy-MM');
                   const data = statsByMonth[key];
-                  const hasDeliveries = data && data.deliveries.length > 0;
 
                   return (
                     <AccordionItem key={key} value={key} className="border rounded-[2rem] bg-card overflow-hidden shadow-sm border-none">
                       <AccordionTrigger className="hover:no-underline p-0">
-                        <div className={cn(
-                          "flex items-center justify-between w-full p-5 text-left transition-colors",
-                          hasDeliveries ? "bg-muted/30" : "bg-muted/10 opacity-60"
-                        )}>
+                        <div className="flex items-center justify-between w-full p-5 text-left transition-colors bg-muted/30">
                           <div className="flex items-center gap-4">
                             <div className="size-12 rounded-2xl bg-background border flex flex-col items-center justify-center shrink-0 shadow-sm">
                               <span className="text-[10px] font-black uppercase text-primary">{format(month, 'MMM', { locale: ptBR })}</span>
@@ -143,66 +147,55 @@ export default function FinancialHistoryPage() {
                             <div>
                               <h3 className="text-lg font-bold capitalize leading-none">{format(month, 'MMMM', { locale: ptBR })}</h3>
                               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                                {hasDeliveries ? `${data.deliveries.length} entregas` : 'Sem registros'}
+                                {data.deliveries.length} entregas
                               </p>
                             </div>
                           </div>
                           <div className="text-right pr-2">
                             <p className="text-base font-black text-primary">
-                              {(data?.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              {data.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </p>
                           </div>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="p-0">
-                        {hasDeliveries ? (
-                          <div className="divide-y divide-dashed">
-                            {data.deliveries.map((delivery) => (
-                              <div key={delivery.id} className="p-4 hover:bg-muted/20 transition-colors">
-                                <div className="flex justify-between items-start mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                      <Building size={16} />
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-bold leading-none">
-                                        <ClientName clientId={delivery.clientId} />
+                        <div className="divide-y divide-dashed">
+                          {data.deliveries.map((delivery) => (
+                            <div key={delivery.id} className="p-4 hover:bg-muted/20 transition-colors">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                    <Building size={16} />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-bold leading-none">
+                                      <ClientName clientId={delivery.clientId} />
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Clock className="size-3 text-muted-foreground" />
+                                      <p className="text-[10px] font-medium text-muted-foreground">
+                                        {format(delivery.createdAt.toDate(), "dd 'de' MMM 'às' HH:mm", { locale: ptBR })}
                                       </p>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <Clock className="size-3 text-muted-foreground" />
-                                        <p className="text-[10px] font-medium text-muted-foreground">
-                                          {format(delivery.createdAt.toDate(), "dd 'de' MMM 'às' HH:mm", { locale: ptBR })}
-                                        </p>
-                                      </div>
                                     </div>
                                   </div>
-                                  <p className="text-sm font-black text-foreground">
-                                    {delivery.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                  </p>
                                 </div>
-                                <div className="flex items-center gap-2 mt-2 px-1">
-                                  <MapPin className="size-3 text-red-500 shrink-0" />
-                                  <p className="text-xs text-muted-foreground truncate">{delivery.dropoff}</p>
-                                </div>
+                                <p className="text-sm font-black text-foreground">
+                                  {delivery.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </p>
                               </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="p-10 text-center">
-                            <Calendar className="size-10 text-muted-foreground/20 mx-auto mb-2" />
-                            <p className="text-xs font-bold text-muted-foreground/50 uppercase tracking-widest">
-                              Nenhuma entrega finalizada
-                            </p>
-                          </div>
-                        )}
+                              <div className="flex items-center gap-2 mt-2 px-1">
+                                <MapPin className="size-3 text-red-500 shrink-0" />
+                                <p className="text-xs text-muted-foreground truncate">{delivery.dropoff}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </AccordionContent>
                     </AccordionItem>
                   );
                 })}
               </Accordion>
-            )}
-
-            {!isLoading && totalYear === 0 && (
+            ) : (
               <div className="text-center py-20 border-2 border-dashed rounded-[2rem]">
                 <Calculator className="size-12 text-muted-foreground/20 mx-auto mb-4" />
                 <p className="font-bold text-muted-foreground">Nenhum faturamento encontrado em {selectedYear}</p>
